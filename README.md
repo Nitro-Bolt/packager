@@ -1,8 +1,8 @@
-# TurboWarp Packager
+# NitroBolt Packager
 
-https://packager.turbowarp.org/
+https://github.com/Nitro-Bolt/packager/
 
-Converts Scratch projects into HTML files, zip archives, or executable programs for Windows, macOS, and Linux.
+Converts projects into HTML files, zip archives, or executable programs for Windows, macOS, and Linux.
 
 ## Development
 
