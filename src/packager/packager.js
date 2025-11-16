@@ -579,6 +579,7 @@ const createWindow = (windowOptions) => {
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.resolve(__dirname, ${JSON.stringify(electronPreloadName)}),
+      backgroundThrottling: ${this.options.app.backgroundThrottling},
     },
     frame: ${this.options.app.windowControls !== 'frameless'},
     show: true,
@@ -1121,7 +1122,8 @@ cd "$(dirname "$0")"
             const path = assetId + '.' + dataFormat;
             const file = findFileInZip(path);
             if (!file) {
-              throw new Error('Asset is not in zip: ' + path)
+              console.error('Asset is not in zip: ' + path);
+              return Promise.resolve(null);
             }
             return file
               .async('uint8array')
@@ -1812,7 +1814,8 @@ Packager.DEFAULT_OPTIONS = () => ({
     windowMode: 'window',
     version: '1.0.0',
     escapeBehavior: 'unfullscreen-only',
-    windowControls: 'default'
+    windowControls: 'default',
+    backgroundThrottling: false
   },
   chunks: {
     gamepad: false,

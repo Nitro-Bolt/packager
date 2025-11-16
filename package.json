@@ -30,13 +30,12 @@
     "type": "git",
     "url": "https://github.com/Nitro-Bolt/packager.git"
   },
-  "funding": "https://github.com/sponsors/GarboMuffin",
   "license": "MPL-2.0",
   "dependencies": {
     "@fiahfy/icns": "^0.0.7",
     "@turbowarp/json": "^0.1.1",
     "@turbowarp/jszip": "^3.11.0",
-    "@turbowarp/sbdl": "^5.0.1",
+    "@turbowarp/sbdl": "^6.0.0",
     "cross-fetch": "^4.1.0",
     "sha.js": "^2.4.11"
   },
@@ -48,7 +47,7 @@
     "babel-jest": "^27.4.5",
     "babel-loader": "^8.2.3",
     "copy-webpack-plugin": "^6.4.1",
-    "cross-env": "^7.0.3",
+    "cross-env": "^10.1.0",
     "css-loader": "^5.2.7",
     "fastestsmallesttextencoderdecoder": "^1.0.22",
     "file-loader": "^6.2.0",
