@@ -1,6 +1,6 @@
 # NitroBolt Packager
 
-https://github.com/Nitro-Bolt/packager/
+https://packager.nitrobolt.org/
 
 Converts projects into HTML files, zip archives, or executable programs for Windows, macOS, and Linux.
 
