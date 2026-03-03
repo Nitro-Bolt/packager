@@ -26,5 +26,6 @@
   "list-empty": "(empty)",
   "list-length": "length {n}",
   "list-import": "import",
-  "list-export": "export"
+  "list-export": "export",
+  "table-cells": "cells {n}"
 }

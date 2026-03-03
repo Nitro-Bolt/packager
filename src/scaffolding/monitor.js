@@ -29,6 +29,8 @@ class Monitor {
       label = this.params.VARIABLE;
     } else if (this.opcode === 'data_listcontents') {
       label = this.params.LIST;
+    } else if (this.opcode === 'data_tablecontents') {
+      label = this.params.TABLE;
     } else if (this.opcode === 'motion_xposition') {
       label = this.parent.getMessage('var-x');
     } else if (this.opcode === 'motion_yposition') {
@@ -622,7 +624,270 @@ class ListMonitor extends Monitor {
   }
 }
 
+class TableMonitor extends Monitor {
+  constructor (parent, monitor) {
+    super(parent, monitor);
+
+    this.label = document.createElement('div');
+    this.label.className = styles.monitorListLabel;
+    this.label.textContent = this.getLabel();
+
+    this.footer = document.createElement('div');
+    this.footer.className = styles.monitorListFooter;
+
+    this.footerText = document.createElement('div');
+    this.footerText.className = styles.monitorListFooterText;
+
+    this.rowsOuter = document.createElement('div');
+    this.rowsOuter.className = styles.monitorRowsOuter;
+
+    this.rowsInner = document.createElement('div');
+    this.rowsInner.className = `${styles.monitorRowsInner} ${styles.monitorTableRowsInner}`;
+
+    this.header = document.createElement('div');
+    this.header.className = styles.monitorTableHeader;
+
+    this.headerCorner = document.createElement('div');
+    this.headerCorner.className = styles.monitorTableHeaderCorner;
+    this.header.appendChild(this.headerCorner);
+
+    this.headerColumns = document.createElement('div');
+    this.headerColumns.className = styles.monitorTableHeaderColumns;
+    this.header.appendChild(this.headerColumns);
+
+    this.body = document.createElement('div');
+    this.body.className = styles.monitorTableBody;
+
+    this.emptyLabel = document.createElement('div');
+    this.emptyLabel.textContent = parent.getMessage('list-empty');
+    this.emptyLabel.className = styles.monitorEmpty;
+
+    this.rowsInner.appendChild(this.header);
+    this.rowsInner.appendChild(this.body);
+    this.rowsInner.appendChild(this.emptyLabel);
+    this.rowsOuter.appendChild(this.rowsInner);
+    this.footer.appendChild(this.footerText);
+    this.root.appendChild(this.label);
+    this.root.appendChild(this.rowsOuter);
+    this.root.appendChild(this.footer);
+
+    this.dropper = new DropArea(this.rowsOuter, this.dropperCallback.bind(this));
+
+    this.handleImport = this.handleImport.bind(this);
+    this.handleExport = this.handleExport.bind(this);
+    this.root.addEventListener('contextmenu', this._oncontextmenu.bind(this));
+
+    this.cachedRows = -1;
+    this.cachedColumns = -1;
+  }
+
+  _oncontextmenu (e) {
+    e.preventDefault();
+    const menu = new ContextMenu(this.parent);
+    menu.add({
+      text: this.parent.getMessage('list-import'),
+      callback: this.handleImport
+    });
+    menu.add({
+      text: this.parent.getMessage('list-export'),
+      callback: this.handleExport
+    });
+    menu.show(e);
+  }
+
+  handleImport () {
+    const fileSelector = document.createElement('input');
+    fileSelector.type = 'file';
+    fileSelector.accept = '.txt,.csv,.tsv';
+    fileSelector.style.display = 'none';
+    document.body.appendChild(fileSelector);
+    fileSelector.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files.length === 0) return;
+      const file = files[0];
+      readAsText(file).then((text) => this.import(text));
+    });
+    fileSelector.click();
+  }
+
+  import (text) {
+    const lines = text.split(/\r?\n/).filter((line, index, all) => line.length > 0 || index < all.length - 1);
+    if (lines.length === 0) {
+      this.setValue([]);
+      return;
+    }
+    const rows = lines.map(line => {
+      if (line.includes('\t')) {
+        return line.split('\t');
+      }
+      if (line.includes(',')) {
+        return line.split(',');
+      }
+      return [line];
+    });
+    this.setValue(rows);
+  }
+
+  handleExport () {
+    const value = this.getValue();
+
+    const encodeCsvCell = (cell) => {
+      const raw = safeStringify(cell);
+      const escaped = raw.replace(/"/g, '""');
+      if (/[",\r\n]/.test(raw)) {
+        return `"${escaped}"`;
+      }
+      return escaped;
+    };
+
+    const exported = value.map(row => {
+      if (Array.isArray(row)) {
+        return row.map(encodeCsvCell).join(',');
+      }
+      return encodeCsvCell(row);
+    }).join('\r\n');
+
+    const blob = new Blob([exported], {
+      type: 'text/csv'
+    });
+    downloadBlob(`${this.getLabel()}.csv`, blob);
+  }
+
+  dropperCallback (texts) {
+    this.import(texts.join('\n'));
+  }
+
+  getValue () {
+    return this.getVmVariable().value;
+  }
+
+  setValue (value) {
+    const variable = this.getVmVariable();
+    variable.value = value;
+    this.updateValue(value);
+  }
+
+  update (monitor) {
+    super.update(monitor);
+
+    if (!this.visible) {
+      return;
+    }
+
+    this.width = monitor.get('width') || 100;
+    this.height = monitor.get('height') || 200;
+    this.root.style.width = `${this.width}px`;
+    this.root.style.height = `${this.height}px`;
+
+    this.updateValue(monitor.get('value'));
+  }
+
+  normalizeValue (value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.map(row => {
+      if (Array.isArray(row)) {
+        return row;
+      }
+      return [row];
+    });
+  }
+
+  getColumnCount (value) {
+    let maxColumns = 0;
+    for (let i = 0; i < value.length; i++) {
+      if (value[i].length > maxColumns) {
+        maxColumns = value[i].length;
+      }
+    }
+    return maxColumns;
+  }
+
+  updateHeader (columnCount) {
+    while (this.headerColumns.childElementCount > columnCount) {
+      this.headerColumns.lastElementChild.remove();
+    }
+    while (this.headerColumns.childElementCount < columnCount) {
+      const index = this.headerColumns.childElementCount + 1;
+      const columnEl = document.createElement('div');
+      columnEl.className = styles.monitorTableColumnTag;
+      columnEl.textContent = index;
+      this.headerColumns.appendChild(columnEl);
+    }
+  }
+
+  updateRows (value, columnCount) {
+    if (columnCount === 0) {
+      this.body.textContent = '';
+      return;
+    }
+
+    while (this.body.childElementCount > value.length) {
+      this.body.lastElementChild.remove();
+    }
+
+    for (let rowIndex = 0; rowIndex < value.length; rowIndex++) {
+      let rowEl = this.body.children[rowIndex];
+      if (!rowEl) {
+        rowEl = document.createElement('div');
+        rowEl.className = styles.monitorTableRow;
+
+        const rowIndexEl = document.createElement('div');
+        rowIndexEl.className = styles.monitorRowIndex;
+        rowEl.appendChild(rowIndexEl);
+
+        const rowCells = document.createElement('div');
+        rowCells.className = styles.monitorTableRowCells;
+        rowEl.appendChild(rowCells);
+
+        this.body.appendChild(rowEl);
+      }
+
+      rowEl.children[0].textContent = rowIndex + 1;
+      const rowCells = rowEl.children[1];
+
+      while (rowCells.childElementCount > columnCount) {
+        rowCells.lastElementChild.remove();
+      }
+      while (rowCells.childElementCount < columnCount) {
+        const cellEl = document.createElement('div');
+        cellEl.className = `${styles.monitorTableCell} ${styles.monitorTableCellColor}`;
+
+        const cellInner = document.createElement('div');
+        cellInner.className = styles.monitorTableCellInner;
+        cellEl.appendChild(cellInner);
+
+        rowCells.appendChild(cellEl);
+      }
+
+      for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+        const cellValue = value[rowIndex][columnIndex];
+        rowCells.children[columnIndex].firstElementChild.textContent = safeStringify(cellValue);
+      }
+    }
+  }
+
+  updateValue (value) {
+    const normalizedValue = this.normalizeValue(value);
+    const rowCount = normalizedValue.length;
+    const columnCount = this.getColumnCount(normalizedValue);
+
+    if (this.cachedRows !== rowCount || this.cachedColumns !== columnCount) {
+      this.cachedRows = rowCount;
+      this.cachedColumns = columnCount;
+      const cellCount = rowCount * columnCount;
+      this.footerText.textContent = this.parent.getMessage('table-cells').replace('{n}', cellCount);
+      this.emptyLabel.style.display = rowCount === 0 || columnCount === 0 ? '' : 'none';
+    }
+
+    this.updateHeader(columnCount);
+    this.updateRows(normalizedValue, columnCount);
+  }
+}
+
 export {
   VariableMonitor,
-  ListMonitor
+  ListMonitor,
+  TableMonitor
 };

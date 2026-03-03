@@ -210,12 +210,18 @@
 }
 .monitor-rows-outer {
   flex-grow: 1;
+  min-height: 0;
 }
 .monitor-rows-inner {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  min-height: 0;
+}
+.monitor-table-rows-inner {
+  overflow-x: auto;
+  overflow-y: auto;
 }
 .monitor-rows-endpoint {
   position: absolute;
@@ -284,6 +290,81 @@
 .monitor-empty {
   text-align: center;
   padding: 5px;
+}
+
+.monitor-table-header {
+  display: flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 0;
+}
+.monitor-table-header-corner {
+  width: 32px;
+  flex-shrink: 0;
+}
+.monitor-table-header-columns {
+  display: flex;
+  width: max-content;
+}
+.monitor-table-column-tag {
+  width: 78px;
+  margin: 0 1px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: bold;
+  color: hsla(225, 15%, 40%, 1);
+}
+.monitor-table-body {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+}
+.monitor-table-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 1px 0;
+}
+.monitor-table-row .monitor-row-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: 32px;
+  height: 22px;
+  line-height: 22px;
+}
+.monitor-table-row-cells {
+  display: flex;
+}
+.monitor-table-cell {
+  width: 78px;
+  min-width: 78px;
+  text-align: left;
+  margin: 0 1px;
+  height: 22px;
+  border: 1px solid hsla(0, 0%, 0%, 0.15);
+  border-radius: calc(0.5rem / 2);
+}
+.monitor-table-cell-inner {
+  padding: 3px 5px;
+  min-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+  -webkit-user-select: text;
+  white-space: pre;
+}
+
+.monitor-table-cell-color {
+  background-color: #66bd5c;
+  color: white;
+}
+.monitor-root[data-opcode="data_tablecontents"] .monitor-table-cell-color {
+  background-color: #66bd5c !important;
 }
 
 .controls-bar {

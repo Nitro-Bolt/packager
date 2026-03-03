@@ -6,7 +6,7 @@ import {EventTarget} from '../common/event-target';
 import VideoProvider from './video';
 import Cloud from './cloud';
 import Question from './question';
-import {ListMonitor, VariableMonitor} from './monitor';
+import {TableMonitor, ListMonitor, VariableMonitor} from './monitor';
 import ControlBar from './control-bar';
 import {isValidListValue, isValidVariableValue} from './verify-value';
 import defaultMessages from './messages.json';
@@ -416,7 +416,9 @@ class Scaffolding extends EventTarget {
         }
         // TODO: add to DOM in same order as appears in list
         const mode = monitorData.get('mode');
-        if (mode === 'list') {
+        if (mode === 'table') {
+          this._monitors.set(id, new TableMonitor(this, monitorData));
+        } else if (mode === 'list') {
           this._monitors.set(id, new ListMonitor(this, monitorData));
         } else {
           this._monitors.set(id, new VariableMonitor(this, monitorData));
