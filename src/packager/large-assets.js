@@ -92,7 +92,7 @@ export default {
   'discord-rpc': {
     src: externalNBFile('discord-rpc-4.0.1.zip'),
     sha256: 'b9e4c7152b58eab6709a48e8fdd14dd466c5de25c791085f3dbd03be2089504c',
-    estimatedSize: 33752,
+    estimatedSize: 33720,
   },
   scaffolding: {
     src: relativeScaffolding('scaffolding-full.js'),
