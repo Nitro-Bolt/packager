@@ -6,7 +6,7 @@
 // network filter.
 
 // estimatedSize is used for the asset download progress bar if the server doesn't specify a
-// Content-Length. It's size in bytes after decoding Content-Encoding. Real size does not need to
+// Content-Length. Its size in bytes after decoding Content-Encoding. Real size does not need to
 // match; this is just for the progress bar. estimatedSize is optional and can be omitted.
 // Make sure to use size estimates from production builds, not development ones.
 
