@@ -94,6 +94,11 @@ export default {
     sha256: '0520ed05f97532dd02bbaa43d13508605f31825f255d0798342bebe4abd38742',
     estimatedSize: 33720,
   },
+  'ws': {
+    src: externalNBFile('ws-8.19.0.zip'),
+    sha256: '86c8f73acefa6fb0d90181b0a06c56e6e1180fca9c608fb9a6a08be402d37419',
+    estimatedSize: 43242,
+  },
   scaffolding: {
     src: relativeScaffolding('scaffolding-full.js'),
     estimatedSize: 4564032,

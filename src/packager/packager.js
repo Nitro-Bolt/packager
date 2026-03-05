@@ -995,6 +995,13 @@ const {contextBridge, ipcRenderer} = require('electron');
         const newPath = path.replace(/^package\//, 'discord-rpc/');
         setFileFast(zip, `${resourcesPrefix}${newPath}`, file);
       }
+
+      const wsBuffer = await this.fetchLargeAsset('ws', 'arraybuffer');
+      const wsZip = await (await getJSZip()).loadAsync(wsBuffer);
+      for (const [path, file] of Object.entries(wsZip.files)) {
+        const newPath = path.replace(/^package\//, 'node_modules/ws/');
+        setFileFast(zip, `${resourcesPrefix}${newPath}`, file);
+      }
     }
 
     zip.file(`${resourcesPrefix}${electronMainName}`, mainJS);
