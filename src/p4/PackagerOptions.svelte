@@ -153,6 +153,8 @@
         thing = 'WKWebView';
       } else if (detail.asset === 'steamworks.js') {
         thing = 'Steamworks.js';
+      } else if (detail.asset === 'discord-rpc') {
+        thing = 'Discord RPC';
       }
       if (thing) {
         task.setProgressText($_('progress.loadingLargeAsset').replace('{thing}', thing));
@@ -1061,6 +1063,41 @@
 
     <p>
       <a href="https://extensions.turbowarp.org/steamworks">{$_('options.steamworksDocumentation')}</a>
+    </p>
+  </Section>
+{/if}
+
+{#if projectData.project.analysis.usesRichPresence}
+  <Section
+    accent="#4D5057"
+    reset={() => {
+      resetOptions([
+        'richPresence'
+      ]);
+    }}
+  >
+    <h2>{$_('options.richPresenceExtension')}</h2>
+    {#if ['electron-win64', 'electron-linux64', 'electron-mac'].includes($options.target)}
+      <p>{$_('options.richPresenceAvailable')}</p>
+      <label class="option">
+        {$_('options.richPresenceOnError')}
+        <select bind:value={$options.richPresence.onError}>
+          <option value="ignore">{$_('options.richPresenceIgnore')}</option>
+          <option value="warning">{$_('options.richPresenceWarning')}</option>
+          <option value="error">{$_('options.richPresenceError')}</option>
+        </select>
+      </label>
+    {:else}
+      <p>{$_('options.richPresenceUnavailable')}</p>
+      <ul>
+        <li>{$_('options.application-win64').replace('{type}', 'Electron')}</li>
+        <li>{$_('options.application-mac').replace('{type}', 'Electron')}</li>
+        <li>{$_('options.application-linux64').replace('{type}', 'Electron')}</li>
+      </ul>
+    {/if}
+
+    <p>
+      <a href="https://extensions.nitrobolt.org/CubesterYT/RichPresence">{$_('options.richPresenceDocumentation')}</a>
     </p>
   </Section>
 {/if}

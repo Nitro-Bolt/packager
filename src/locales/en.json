@@ -600,6 +600,38 @@
       "string": "Show an error and exit",
       "developer_comment": "Part of dropdown for what to do if Steamworks has an error"
     },
+    "richPresenceExtension": {
+      "string": "Rich Presence Extension",
+      "developer_comment": "Title of section that appears when using the Rich Presence extension"
+    },
+    "richPresenceDocumentation": {
+      "string": "See the extension's documentation for more details.",
+      "developer_comment": "Link to more documentation about the Rich Presence extension"
+    },
+    "richPresenceUnavailable": {
+      "string": "To enable the Rich Presence extension, you must use one of these environments:",
+      "developer_comment": "Followed by a list of environments"
+    },
+    "richPresenceAvailable": {
+      "string": "This project is using the Rich Presence extension. The Discord RPC library will be included automatically.",
+      "developer_comment": "Shown when the selected environment supports Rich Presence"
+    },
+    "richPresenceOnError": {
+      "string": "If there is an error initializing Rich Presence",
+      "developer_comment": "Followed by a drop down: 'do nothing', 'show a warning ...', 'show an error ...'"
+    },
+    "richPresenceIgnore": {
+      "string": "Do nothing",
+      "developer_comment": "Part of dropdown for what to do if Rich Presence has an error"
+    },
+    "richPresenceWarning": {
+      "string": "Show a warning but continue",
+      "developer_comment": "Part of dropdown for what to do if Rich Presence has an error"
+    },
+    "richPresenceError": {
+      "string": "Show an error and exit",
+      "developer_comment": "Part of dropdown for what to do if Rich Presence has an error"
+    },
     "package": {
       "string": "Package",
       "developer_comment": "Button to package the project"

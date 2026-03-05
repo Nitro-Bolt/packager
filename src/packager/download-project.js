@@ -6,6 +6,7 @@ const unknownAnalysis = () => ({
   stageComments: [],
   usesMusic: true,
   usesSteamworks: false,
+  usesRichPresence: false,
   extensions: []
 });
 
@@ -42,6 +43,7 @@ const analyzeScratch3 = (projectData) => {
   // TODO: usesMusic has possible false negatives
   const usesMusic = projectData.extensions.includes('music');
   const usesSteamworks = projectData.extensions.includes('steamworks');
+  const usesRichPresence = projectData.extensions.includes('cubesterRichPresence');
   const extensions = projectData.extensionURLs ? Object.values(projectData.extensionURLs) : [];
   return {
     ...unknownAnalysis(),
@@ -49,6 +51,7 @@ const analyzeScratch3 = (projectData) => {
     stageComments,
     usesMusic,
     usesSteamworks,
+    usesRichPresence,
     extensions
   };
 };

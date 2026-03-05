@@ -856,6 +856,147 @@ const {contextBridge, ipcRenderer} = require('electron');
       }
     }
 
+    if (
+      this.project.analysis.usesRichPresence &&
+      ['electron-win64', 'electron-linux64', 'electron-mac'].includes(this.options.target)
+    ) {
+      mainJS += `
+      const enableRichPresence = () => {
+        const rpc = require('./discord-rpc/');
+        let rpcClient = null;
+
+        const normalizeLoginOptions = (options) => {
+          const safeOptions = (options && typeof options === 'object') ? options : {};
+          if (safeOptions.clientId || !safeOptions.clientID) {
+            return safeOptions;
+          }
+          return {
+            ...safeOptions,
+            clientId: safeOptions.clientID,
+          };
+        };
+
+        ipcMain.handle('RichPresence.login', async (event, options) => {
+          if (rpcClient) {
+            try {
+              rpcClient.destroy();
+            } catch (e) {
+              console.warn(e);
+            }
+          }
+
+          rpcClient = new rpc.Client({transport: 'ipc'});
+          rpcClient.on('ready', () => {
+            if (event.sender && !event.sender.isDestroyed()) {
+              event.sender.send('RichPresence.ready');
+            }
+          });
+
+          await rpcClient.login(normalizeLoginOptions(options));
+          return true;
+        });
+
+        ipcMain.handle('RichPresence.setActivity', async (_event, activity) => {
+          if (!rpcClient) {
+            return false;
+          }
+          await rpcClient.setActivity(activity || {});
+          return true;
+        });
+
+        ipcMain.on('RichPresence.ok', (event) => {
+          event.returnValue = true;
+        });
+      };
+
+      try {
+        enableRichPresence();
+      } catch (e) {
+        console.error(e);
+        ipcMain.on('RichPresence.ok', (event) => {
+          event.returnValue = false;
+        });
+        app.whenReady().then(() => {
+          const ON_ERROR = ${JSON.stringify(this.options.richPresence.onError)};
+          const window = BrowserWindow.getAllWindows()[0];
+          if (ON_ERROR === 'warning') {
+            dialog.showMessageBox(window, {
+              type: 'error',
+              message: 'Error initializing Rich Presence: ' + e,
+            });
+          } else if (ON_ERROR === 'error') {
+            dialog.showMessageBoxSync(window, {
+              type: 'error',
+              message: 'Error initializing Rich Presence: ' + e,
+            });
+            app.quit();
+          }
+        });
+      }`;
+
+      preloadJS += `
+      const enableRichPresence = () => {
+        const isAvailable = () => ipcRenderer.sendSync('RichPresence.ok');
+
+        if (!isAvailable()) {
+          return;
+        }
+
+        const Client = function Client(clientOptions = {}) {
+          const listeners = {};
+
+          const emit = (event, ...args) => {
+            if (!listeners[event]) {
+              return;
+            }
+            for (const callback of listeners[event]) {
+              try {
+                callback(...args);
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          };
+
+          ipcRenderer.on('RichPresence.ready', () => {
+            emit('ready');
+          });
+
+          return {
+            on(event, callback) {
+              if (!listeners[event]) {
+                listeners[event] = [];
+              }
+              listeners[event].push(callback);
+              return this;
+            },
+            login(options = {}) {
+              return ipcRenderer.invoke('RichPresence.login', {
+                ...clientOptions,
+                ...options,
+              });
+            },
+            setActivity(activity = {}) {
+              return ipcRenderer.invoke('RichPresence.setActivity', activity);
+            },
+          };
+        };
+
+        contextBridge.exposeInMainWorld('RPC', {
+          Client,
+        });
+      };
+
+      enableRichPresence();`;
+
+      const discordRpcBuffer = await this.fetchLargeAsset('discord-rpc', 'arraybuffer');
+      const discordRpcZip = await (await getJSZip()).loadAsync(discordRpcBuffer);
+      for (const [path, file] of Object.entries(discordRpcZip.files)) {
+        const newPath = path.replace(/^package\//, 'discord-rpc/');
+        setFileFast(zip, `${resourcesPrefix}${newPath}`, file);
+      }
+    }
+
     zip.file(`${resourcesPrefix}${electronMainName}`, mainJS);
     zip.file(`${resourcesPrefix}${electronPreloadName}`, preloadJS);
 
@@ -1849,6 +1990,10 @@ Packager.DEFAULT_OPTIONS = () => ({
   steamworks: {
     // 480 is Spacewar, the Steamworks demo game
     appId: '480',
+    // 'ignore' (no alert), 'warning' (alert and continue), or 'error' (alert and exit)
+    onError: 'warning'
+  },
+  richPresence: {
     // 'ignore' (no alert), 'warning' (alert and continue), or 'error' (alert and exit)
     onError: 'warning'
   },
