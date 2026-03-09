@@ -3,12 +3,30 @@ import {downloadProjectFromBuffer} from '@turbowarp/sbdl';
 
 const unknownAnalysis = () => ({
   stageVariables: [],
-  stageComments: [],
+  hasStoredSettings: false,
   usesMusic: true,
   usesSteamworks: false,
   usesRichPresence: false,
   extensions: []
 });
+
+const hasStoredProjectOptions = (projectData) => {
+  if (!Object.prototype.hasOwnProperty.call(projectData, 'projectOptions')) {
+    return false;
+  }
+  const options = projectData.projectOptions;
+  if (options === null || options === undefined) {
+    return false;
+  }
+  if (typeof options === 'string') {
+    const trimmed = options.trim();
+    return trimmed !== '' && trimmed !== '{}';
+  }
+  if (typeof options === 'object') {
+    return Object.keys(options).length > 0;
+  }
+  return true;
+};
 
 const analyzeScratch2 = (projectData) => {
   const stageVariables = (projectData.variables || [])
@@ -38,8 +56,6 @@ const analyzeScratch3 = (projectData) => {
       name,
       isCloud: !!cloud
     }));
-  const stageComments = Object.values(stage.comments)
-    .map((i) => i.text);
   // TODO: usesMusic has possible false negatives
   const usesMusic = projectData.extensions.includes('music');
   const usesSteamworks = projectData.extensions.includes('steamworks');
@@ -48,7 +64,7 @@ const analyzeScratch3 = (projectData) => {
   return {
     ...unknownAnalysis(),
     stageVariables,
-    stageComments,
+    hasStoredSettings: hasStoredProjectOptions(projectData),
     usesMusic,
     usesSteamworks,
     usesRichPresence,

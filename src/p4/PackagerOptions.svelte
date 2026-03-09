@@ -49,10 +49,7 @@
     return i;
   });
 
-  const hasMagicComment = (magic) => projectData.project.analysis.stageComments.find(
-    (text) => text.split('\n').find((line) => line.endsWith(magic))
-  );
-  const hasSettingsStoredInProject = hasMagicComment(' // _twconfig_');
+  const hasSettingsStoredInProject = !!projectData.project.analysis.hasStoredSettings;
 
   let result = null;
   let previewer = null;
