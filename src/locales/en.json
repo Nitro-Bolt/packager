@@ -484,6 +484,10 @@
       "string": "{type} Linux application for ARM (64-bit)",
       "developer_comment": "type will become something like 'NW.js' or 'Electron'. Do not translate 'Linux' or 'ARM'."
     },
+    "application-tauri": {
+      "string": "Tauri project template",
+      "developer_comment": "Do not translate 'Tauri'"
+    },
     "otherEnvironments": {
       "string": "Other environments (Click to open)",
       "developer_comment": "Text that can be clicked to expand list of environments to include some unrecommended ones."
