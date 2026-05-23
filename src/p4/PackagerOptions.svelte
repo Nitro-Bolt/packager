@@ -88,7 +88,8 @@
     'zip',
     'electron-win32',
     'webview-mac',
-    'electron-linux64'
+    'electron-linux64',
+    'tauri'
   ].includes($options.target);
 
   const advancedOptionsInitiallyOpen = (
@@ -146,6 +147,8 @@
         thing = 'NW.js';
       } else if (detail.asset.startsWith('electron-')) {
         thing = 'Electron';
+      } else if (detail.asset === 'tauri') {
+        thing = 'Tauri';
       } else if (detail.asset === 'webview-mac') {
         thing = 'WKWebView';
       } else if (detail.asset === 'steamworks.js') {
@@ -817,6 +820,10 @@
         <input type="radio" name="environment" bind:group={$options.target} value="electron-linux64">
         {$_('options.application-linux64').replace('{type}', 'Electron')}
       </label>
+      <label class="option">
+        <input type="radio" name="environment" bind:group={$options.target} value="tauri">
+        {$_('options.application-tauri')}
+      </label>
     </div>
 
     <details open={otherEnvironmentsInitiallyOpen}>
@@ -904,7 +911,7 @@
           </label>
           <p>{$_('options.versionHelp')}</p>
 
-          {#if $options.target.includes('electron')}
+          {#if $options.target.includes('electron') || $options.target === 'tauri'}
             <label class="option">
               {$_('options.initalWindowSize')}
               <select bind:value={$options.app.windowMode}>
@@ -914,6 +921,7 @@
               </select>
             </label>
 
+            {#if $options.target.includes('electron')}
             <label class="option">
               {$_('options.escapeBehavior')}
               <select bind:value={$options.app.escapeBehavior}>
@@ -923,6 +931,7 @@
                 <option value="nothing">{$_('options.doNothing')}</option>
               </select>
             </label>
+            {/if}
 
             <label class="option">
               {$_('options.windowControls')}
@@ -932,10 +941,12 @@
               </select>
             </label>
 
+            {#if $options.target.includes('electron')}
             <label class="option">
               <input type="checkbox" bind:checked={$options.app.backgroundThrottling}>
               {$_('options.backgroundThrottling')}
             </label>
+            {/if}
           {/if}
 
           <div class="warning">
@@ -994,6 +1005,13 @@
               {#if $options.target.includes('mac')}
                 <p>On macOS, the app will run using Rosetta on Apple Silicon Macs.</p>
               {/if}
+            </div>
+          {:else if $options.target === 'tauri'}
+            <div>
+              <h2>Tauri</h2>
+              <p>The Tauri environment generates a ready-to-build Rust/Tauri source project. Unlike Electron, it uses your system's native webview, resulting in a much smaller app size.</p>
+              <p>To build the app you will need to install <a href="https://rustup.rs/" target="_blank" rel="noopener noreferrer">Rust</a>, <a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer">Node.js</a>, and any <a href="https://tauri.app/start/prerequisites/" target="_blank" rel="noopener noreferrer">platform-specific dependencies</a>, then follow the instructions in the README.txt included in the output zip.</p>
+              <p>Note: Tauri apps must be compiled on the target platform (Windows, macOS, or Linux). The generated source project is cross-platform and can be built on any of these platforms.</p>
             </div>
           {:else if $options.target.includes('webview-mac')}
             <div>
