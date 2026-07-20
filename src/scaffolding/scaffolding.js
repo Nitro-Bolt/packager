@@ -259,8 +259,9 @@ class Scaffolding extends EventTarget {
   }
 
   relayout () {
-    const totalWidth = Math.max(1, this._root.offsetWidth);
-    const totalHeight = Math.max(1, this._root.offsetHeight);
+    const rootRect = this._root.getBoundingClientRect();
+    const totalWidth = Math.max(1, rootRect.width);
+    const totalHeight = Math.max(1, rootRect.height);
 
     const offsetFromTop = this._offsetFromTop + this._topControls.computeHeight();
     const offsetFromBottom = this._offsetFromBottom;
@@ -291,10 +292,16 @@ class Scaffolding extends EventTarget {
       }
     }
 
+    // Snap dimensions to the device-pixel grid so the canvas drawing buffer and CSS box size match exactly, avoiding any blur.
+    const dpr = window.devicePixelRatio || 1;
+    const snap = (value) => Math.round(value * dpr) / dpr;
+
+    width = snap(width);
+    height = snap(height);
     const distanceFromTop = totalHeight - height;
     const distanceFromLeft = totalWidth - width;
-    const translateY = (distanceFromLeft - offsetFromLeft - offsetFromRight) / 2 + offsetFromLeft - (distanceFromLeft / 2);
-    const translateX = (distanceFromTop - offsetFromTop - offsetFromBottom) / 2 + offsetFromTop - (distanceFromTop / 2);
+    const translateY = snap((distanceFromLeft - offsetFromLeft - offsetFromRight) / 2 + offsetFromLeft - (distanceFromLeft / 2));
+    const translateX = snap((distanceFromTop - offsetFromTop - offsetFromBottom) / 2 + offsetFromTop - (distanceFromTop / 2));
 
     this._layers.style.transform = `translate(${translateY}px, ${translateX}px)`;
     this._layers.style.width = `${width}px`;
