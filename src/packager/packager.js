@@ -1131,6 +1131,7 @@ cd "$(dirname "$0")"
 
     const zip = new (await getJSZip());
     const prefix = `${packageName}/`;
+    const usesRichPresence = this.project.analysis.usesRichPresence;
 
     for (const [path, data] of Object.entries(projectZip.files)) {
       setFileFast(zip, `${prefix}src/${path}`, data);
@@ -1139,16 +1140,27 @@ cd "$(dirname "$0")"
     const icon = await Adapter.getAppIcon(this.options.app.icon);
     zip.file(`${prefix}src-tauri/icons/icon.png`, icon);
 
-    zip.file(`${prefix}src-tauri/src/main.rs`, `\
+    const plugins = [];
+
+    if (usesRichPresence) {
+      plugins.push(".plugin(tauri_plugin_drpc::init())");
+    }
+
+    const pluginCode = plugins.map(plugin => `        ${plugin}`).join('\n');
+
+    const mainRs = `\
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
     tauri::Builder::default()
+${pluginCode}
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-`);
+`;
+
+    zip.file(`${prefix}src-tauri/src/main.rs`, mainRs);
 
     // src-tauri/build.rs
     zip.file(`${prefix}src-tauri/build.rs`, `\
@@ -1169,6 +1181,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+${usesRichPresence ? 'tauri-plugin-drpc = "*"' : ''}
 
 [profile.dev]
 incremental = true
@@ -1204,6 +1217,7 @@ strip = true
         frontendDist: '../src',
       },
       app: {
+        withGlobalTauri: usesRichPresence,
         windows: [windowConfig],
         security: {
           csp: null,
@@ -1217,6 +1231,17 @@ strip = true
     };
     zip.file(`${prefix}src-tauri/tauri.conf.json`, JSON.stringify(tauriConf, null, 2));
 
+    if (usesRichPresence) {
+      zip.file(`${prefix}src-tauri/capabilities/default.json`, JSON.stringify({
+        identifier: 'default',
+        description: 'Default capabilities',
+        windows: ['main'],
+        permissions: [
+          'drpc:default',
+        ],
+      }, null, 2));
+    }
+
     const packageJson = {
       name: crateId,
       private: true,
@@ -1226,6 +1251,9 @@ strip = true
       },
       devDependencies: {
         '@tauri-apps/cli': '^2',
+        ...(usesRichPresence ? {
+          'tauri-plugin-drpc': '*',
+        } : {}),
       },
     };
     zip.file(`${prefix}package.json`, JSON.stringify(packageJson, null, 2));
@@ -1903,6 +1931,54 @@ To run in development mode (requires a static file server for src/):
         getSandboxMode: () => 'unsandboxed',
         canLoadExtensionFromProject: () => true
       });
+
+      ${this.options.target === 'tauri' && this.project.analysis.usesRichPresence ? `
+      if (typeof window.__TAURI__ !== 'undefined' && typeof window.RPC === 'undefined') {
+        (function() {
+          var invoke = window.__TAURI__.core.invoke;
+          function Client(options) {
+            var listeners = {};
+            this.on = function(event, callback) {
+              if (!listeners[event]) listeners[event] = [];
+              listeners[event].push(callback);
+              return this;
+            };
+            this.login = function(options) {
+              var clientId = options && (options.clientId || options.clientID);
+              if (!clientId) return Promise.reject(new Error('No client ID'));
+              return invoke('plugin:drpc|spawn_thread', { id: clientId }).then(function() {
+                if (listeners['ready']) {
+                  for (var i = 0; i < listeners['ready'].length; i++) {
+                    try { listeners['ready'][i](); } catch(e) { console.error(e); }
+                  }
+                }
+              });
+            };
+            this.setActivity = function(activity) {
+              activity = activity || {};
+              var converted = {};
+              if (activity.details) converted.details = activity.details;
+              if (activity.state) converted.state = activity.state;
+              var assets = {};
+              if (activity.largeImageKey) assets.large_image = activity.largeImageKey;
+              if (activity.largeImageText) assets.large_text = activity.largeImageText;
+              if (activity.smallImageKey) assets.small_image = activity.smallImageKey;
+              if (activity.smallImageText) assets.small_text = activity.smallImageText;
+              if (Object.keys(assets).length > 0) converted.assets = assets;
+              if (activity.startTimestamp) {
+                converted.timestamps = { start: Math.floor(activity.startTimestamp / 1000) };
+              }
+              if (activity.partySize || activity.partyMax) {
+                converted.party = { id: '', size: [activity.partySize || 1, activity.partyMax || 2] };
+              }
+              if (typeof activity.instance === 'boolean') converted.instance = activity.instance;
+              return invoke('plugin:drpc|set_activity', { activityJson: JSON.stringify(converted) });
+            };
+          }
+          window.RPC = { Client: Client };
+        })();
+      }` : ''}
+
       for (const extension of ${JSON.stringify(await this.generateExtensionURLs())}) {
         vm.extensionManager.loadExtensionURL(extension);
       }
