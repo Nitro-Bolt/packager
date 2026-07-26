@@ -1132,6 +1132,7 @@ cd "$(dirname "$0")"
     const zip = new (await getJSZip());
     const prefix = `${packageName}/`;
     const usesRichPresence = this.project.analysis.usesRichPresence;
+    const usesSteamworks = this.project.analysis.usesSteamworks;
 
     for (const [path, data] of Object.entries(projectZip.files)) {
       setFileFast(zip, `${prefix}src/${path}`, data);
@@ -1140,22 +1141,43 @@ cd "$(dirname "$0")"
     const icon = await Adapter.getAppIcon(this.options.app.icon);
     zip.file(`${prefix}src-tauri/icons/icon.png`, icon);
 
-    const plugins = [];
+    // Plugin system: each plugin declares its Cargo dep, main.rs registration,
+    // pre-init code, permission, npm package, and whether it needs __TAURI__ global.
+    const tauriPlugins = [];
 
     if (usesRichPresence) {
-      plugins.push(".plugin(tauri_plugin_drpc::init())");
+      tauriPlugins.push({
+        cargoDep: 'tauri-plugin-drpc = "*"',
+        mainRsPlugin: '.plugin(tauri_plugin_drpc::init())',
+        permission: 'drpc:default',
+        npmPackage: 'tauri-plugin-drpc',
+        needsGlobalTauri: true,
+      });
     }
 
-    const pluginCode = plugins.map(plugin => `        ${plugin}`).join('\n');
+    if (usesSteamworks) {
+      const steamAppId = parseInt(this.options.steamworks.appId) || 480;
+      tauriPlugins.push({
+        cargoDep: 'tauri-plugin-steamworks = { version = "0.1", features = ["overlay"] }',
+        mainRsPlugin: '.plugin(tauri_plugin_steamworks::init())\n        .plugin(tauri_plugin_steamworks::init_overlay())',
+        mainRsPreInit: `tauri_plugin_steamworks::init_steam(${steamAppId});`,
+        permission: 'steamworks:default',
+        npmPackage: 'tauri-plugin-steamworks-api',
+        needsGlobalTauri: true,
+      });
+    }
+
+    const hasPlugins = tauriPlugins.length > 0;
+    const pluginCode = tauriPlugins.map(p => `        ${p.mainRsPlugin}`).join('\n');
+    const preInitCode = tauriPlugins.filter(p => p.mainRsPreInit).map(p => `    ${p.mainRsPreInit}`).join('\n');
 
     const mainRs = `\
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    tauri::Builder::default()
-${pluginCode}
-        .run(tauri::generate_context!())
+${preInitCode ? preInitCode + '\n\n' : ''}    tauri::Builder::default()
+${pluginCode ? pluginCode + '\n' : ''}        .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 `;
@@ -1170,6 +1192,7 @@ fn main() {
 `);
 
     // src-tauri/Cargo.toml
+    const cargoDeps = tauriPlugins.map(p => p.cargoDep).join('\n');
     zip.file(`${prefix}src-tauri/Cargo.toml`, `\
 [package]
 name = ${JSON.stringify(crateId)}
@@ -1181,8 +1204,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-${usesRichPresence ? 'tauri-plugin-drpc = "*"' : ''}
-
+${cargoDeps ? cargoDeps + '\n' : ''}
 [profile.dev]
 incremental = true
 
@@ -1208,6 +1230,7 @@ strip = true
       windowConfig.maximized = true;
     }
 
+    const needsGlobalTauri = tauriPlugins.some(p => p.needsGlobalTauri);
     const tauriConf = {
       $schema: 'https://schema.tauri.app/config/2',
       productName: this.options.app.windowTitle,
@@ -1217,7 +1240,7 @@ strip = true
         frontendDist: '../src',
       },
       app: {
-        withGlobalTauri: usesRichPresence,
+        withGlobalTauri: needsGlobalTauri,
         windows: [windowConfig],
         security: {
           csp: null,
@@ -1231,17 +1254,22 @@ strip = true
     };
     zip.file(`${prefix}src-tauri/tauri.conf.json`, JSON.stringify(tauriConf, null, 2));
 
-    if (usesRichPresence) {
+    // src-tauri/capabilities/default.json
+    if (hasPlugins) {
+      const permissions = tauriPlugins.map(p => p.permission);
       zip.file(`${prefix}src-tauri/capabilities/default.json`, JSON.stringify({
         identifier: 'default',
         description: 'Default capabilities',
         windows: ['main'],
-        permissions: [
-          'drpc:default',
-        ],
+        permissions,
       }, null, 2));
     }
 
+    // package.json
+    const npmDeps = {};
+    for (const p of tauriPlugins) {
+      npmDeps[p.npmPackage] = '*';
+    }
     const packageJson = {
       name: crateId,
       private: true,
@@ -1251,9 +1279,7 @@ strip = true
       },
       devDependencies: {
         '@tauri-apps/cli': '^2',
-        ...(usesRichPresence ? {
-          'tauri-plugin-drpc': '*',
-        } : {}),
+        ...npmDeps,
       },
     };
     zip.file(`${prefix}package.json`, JSON.stringify(packageJson, null, 2));
@@ -1979,9 +2005,79 @@ To run in development mode (requires a static file server for src/):
         })();
       }` : ''}
 
+      ${this.options.target === 'tauri' && this.project.analysis.usesSteamworks ? `
+      var steamInitDone = (function() {
+        if (typeof window.__TAURI__ === 'undefined' || typeof window.Steamworks !== 'undefined') {
+          return Promise.resolve();
+        }
+        var invoke = window.__TAURI__.core.invoke;
+        var steamOk = false;
+        var cachedName = '';
+        var cachedLevel = 0;
+        var cachedIpCountry = '';
+        var cachedSteamId = { steamId64: '' };
+
+        window.Steamworks = {
+          ok: function() { return steamOk; },
+          localplayer: {
+            getName: function() { return cachedName; },
+            getLevel: function() { return cachedLevel; },
+            getIpCountry: function() { return cachedIpCountry; },
+            getSteamId: function() { return cachedSteamId; },
+          },
+          achievement: {
+            activate: function(name) { return invoke('plugin:steamworks|set_achievement', { name: name }); },
+            clear: function(name) { return invoke('plugin:steamworks|clear_achievement', { name: name }); },
+            isActivated: function(name) {
+              return invoke('plugin:steamworks|get_achievement', { name: name }).then(function(r) { return r.achieved; });
+            },
+          },
+          apps: {
+            isDlcInstalled: function() { return false; },
+          },
+          overlay: {
+            activateToWebPage: function(url) {
+              return invoke('plugin:steamworks|activate_game_overlay_to_web_page', { url: url });
+            },
+          },
+        };
+
+        return invoke('plugin:steamworks|steam_init', { appId: ${parseInt(this.options.steamworks.appId) || 480} }).then(function(result) {
+          steamOk = result;
+          if (steamOk) {
+            return Promise.all([
+              invoke('plugin:steamworks|get_user_name'),
+              invoke('plugin:steamworks|get_user_level'),
+              invoke('plugin:steamworks|get_ip_country'),
+              invoke('plugin:steamworks|get_user_steam_id')
+            ]).then(function(r) {
+              cachedName = r[0];
+              cachedLevel = r[1];
+              cachedIpCountry = r[2];
+              cachedSteamId = { steamId64: String(r[3]) };
+            });
+          }
+        }).then(function() {
+          window.addEventListener('keydown', function(e) {
+            if (e.shiftKey && e.key === 'Tab') {
+              e.preventDefault();
+              invoke('plugin:steamworks|activate_overlay').catch(function() {});
+            }
+          });
+        }).catch(function(e) {
+          console.error('Steamworks init failed:', e);
+        });
+      })();` : ''}
+
+      ${(this.options.target === 'tauri' && this.project.analysis.usesSteamworks) ? `
+      steamInitDone.then(function() {
+        for (const extension of ${JSON.stringify(await this.generateExtensionURLs())}) {
+          vm.extensionManager.loadExtensionURL(extension);
+        }
+      });` : `
       for (const extension of ${JSON.stringify(await this.generateExtensionURLs())}) {
         vm.extensionManager.loadExtensionURL(extension);
-      }
+      }`}
 
       ${this.options.closeWhenStopped ? `
       vm.runtime.on('PROJECT_RUN_STOP', () => {
