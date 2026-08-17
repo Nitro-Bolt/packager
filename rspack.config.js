@@ -1,8 +1,7 @@
 const path = require('path');
-const webpack = require('webpack');
+const rspack = require('@rspack/core');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const AddBuildIDToOutputPlugin = require('./src/build/add-build-id-to-output-plugin');
 const GenerateServiceWorkerPlugin = require('./src/build/generate-service-worker-plugin');
 const EagerDynamicImportPlugin = require('./src/build/eager-dynamic-import-plugin');
@@ -32,7 +31,7 @@ const version = getVersion();
 
 const makeScaffolding = ({full}) => ({
   ...base,
-  devtool: isProduction ? '' : 'source-map',
+  devtool: isProduction ? false : 'source-map',
   output: {
     filename: 'scaffolding/[name].js',
     path: dist
@@ -66,19 +65,17 @@ const makeScaffolding = ({full}) => ({
         }
       },
       {
+        resourceQuery: /raw/,
+        type: 'asset/source'
+      },
+      {
         test: /\.(svg|png)$/i,
-        use: [{
-          loader: 'url-loader'
-        }]
+        resourceQuery: {not: /raw/},
+        type: 'asset/inline'
       },
       ...(full ? [{
         test: /\.mp3$/i,
-        use: [{
-          loader: 'url-loader',
-          options: {
-            esModule: false
-          }
-        }]
+        type: 'asset/inline'
       }] : [{
         test: /\.mp3$/i,
         use: [{
@@ -87,33 +84,23 @@ const makeScaffolding = ({full}) => ({
       }]),
       {
         test: /\.css$/i,
+        resourceQuery: {not: /raw/},
         use: [
           {
-            loader: 'style-loader',
-            options: {
-              // This function is stringified and run in a web environment
-              insert: (styleElement) => {
-                var el = document.head || document.body || document.documentElement;
-                el.insertBefore(styleElement, el.firstChild);
-              }
-            }
+            loader: 'style-loader'
           },
           {
             loader: 'css-loader',
             options: {
               modules: {
                 localIdentName: 'sc-[local]',
-                exportLocalsConvention: 'camelCase',
+                exportLocalsConvention: 'camel-case',
               },
             }
           }
         ],
       }
     ]
-  },
-  resolveLoader: {
-    // Replace worker-loader with our own modified version
-    modules: [path.resolve(__dirname, 'src', 'build', 'inline-worker-loader'), 'node_modules'],
   },
   plugins: [
     ...(buildId ? [new AddBuildIDToOutputPlugin(buildId)] : []),
@@ -122,7 +109,7 @@ const makeScaffolding = ({full}) => ({
 });
 
 const commonFrontendPlugins = () => [
-  new webpack.DefinePlugin({
+  new rspack.DefinePlugin({
     'process.env.SCAFFOLDING_BUILD_ID': buildId ? JSON.stringify(buildId) : '("development-" + Math.random().toString().substring(2))',
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
   })
@@ -142,6 +129,11 @@ const makeWebsite = () => ({
     alias: {
       svelte: path.resolve('node_modules', 'svelte')
     },
+    fallback: {
+      buffer: require.resolve('buffer/'),
+      stream: require.resolve('stream-browserify'),
+      zlib: require.resolve('browserify-zlib')
+    },
     extensions: ['.mjs', '.js', '.svelte'],
     mainFields: ['svelte', 'browser', 'module', 'main']
   },
@@ -154,14 +146,22 @@ const makeWebsite = () => ({
   module: {
     rules: [
       {
-        test: /\.png|\.svg$/i,
-        use: isStandalone ? {
-          loader: 'url-loader'
-        } : {
-          loader: 'file-loader',
-          options: {
-            name: 'assets/[name].[contenthash].[ext]'
-          }
+        resourceQuery: /raw/,
+        type: 'asset/source'
+      },
+      {
+        test: /\.(png|svg)$/i,
+        resourceQuery: {not: /raw/},
+        type: isStandalone ? 'asset/inline' : 'asset/resource',
+        generator: {
+          filename: 'assets/[name].[contenthash][ext]'
+        }
+      },
+      {
+        test: /sw\.js$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'sw.js'
         }
       },
       {
@@ -172,14 +172,14 @@ const makeWebsite = () => ({
   },
   plugins: [
     ...commonFrontendPlugins(),
-    new CopyWebpackPlugin({
+    new rspack.CopyRspackPlugin({
       patterns: [
         {
           from: 'static'
         }
       ]
     }),
-    new webpack.DefinePlugin({
+    new rspack.DefinePlugin({
       'process.env.ENABLE_SERVICE_WORKER': JSON.stringify(process.env.ENABLE_SERVICE_WORKER),
       'process.env.STANDALONE': JSON.stringify(isStandalone ? true : false),
       'process.env.VERSION': JSON.stringify(version),
@@ -194,10 +194,11 @@ const makeWebsite = () => ({
     ...(process.env.BUNDLE_ANALYZER === 'p4' ? [new BundleAnalyzerPlugin()] : [])
   ],
   devServer: {
-    contentBase: './dist/',
+    static: {
+      directory: path.resolve(__dirname, 'dist')
+    },
     compress: true,
-    overlay: true,
-    inline: false,
+    allowedHosts: 'all',
     host: '0.0.0.0',
     port: 8947
   },
@@ -230,7 +231,10 @@ const makeNode = () => ({
     rules: [
       {
         test: /\.png|\.svg$/i,
-        use: 'file-loader'
+        type: 'asset/resource',
+        generator: {
+          filename: '[name][ext]'
+        }
       }
     ]
   },

@@ -1,5 +1,5 @@
 import gamepadUserscript from './userscript.js';
-import gamepadUserstyle from '!raw-loader!./style.css'
+import gamepadUserstyle from './style.css?raw'
 
 const addStylesheet = (css) => {
   const stylesheet = document.createElement('style');

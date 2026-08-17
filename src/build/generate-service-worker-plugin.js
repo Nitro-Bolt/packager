@@ -1,4 +1,3 @@
-const RawSource = require('webpack-sources').RawSource;
 const crypto = require('crypto');
 
 const PLUGIN_NAME = 'GenerateServiceWorkerPlugin';
@@ -11,6 +10,7 @@ const CACHE_PAGES = [
 
 class GenerateServiceWorkerPlugin {
   apply(compiler) {
+    const {RawSource} = compiler.webpack.sources;
     const allAssetNames = new Set(CACHE_PAGES);
     compiler.hooks.emit.tap(PLUGIN_NAME, compilation => {
       compilation.getAssets()

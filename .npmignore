@@ -1,7 +1,7 @@
 src
 static
 test
-webpack.config.js
+rspack.config.js
 babel.config.js
 .browserslistrc
 .github

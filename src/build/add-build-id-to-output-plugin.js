@@ -1,5 +1,3 @@
-const RawSource = require('webpack-sources').RawSource;
-
 const PLUGIN_NAME = 'AddBuildIDToOutputPlugin';
 
 class AddBuildIDToOutputPlugin {
@@ -7,6 +5,7 @@ class AddBuildIDToOutputPlugin {
     this.magic = `\n// ${id} =^..^=`;
   }
   apply(compiler) {
+    const {RawSource} = compiler.webpack.sources;
     compiler.hooks.emit.tap(PLUGIN_NAME, (compilation) => {
       for (const assetName of Object.keys(compilation.assets)) {
         if (assetName.endsWith('.js')) {

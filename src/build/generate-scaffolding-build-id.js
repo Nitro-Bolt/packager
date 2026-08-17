@@ -15,7 +15,7 @@ const files = [
   ...getAllFiles('./src/scaffolding/**/*'),
   ...getAllFiles('./src/addons/**/*'),
   ...getAllFiles('./src/common/**/*'),
-  path.join(root, 'webpack.config.js'),
+  path.join(root, 'rspack.config.js'),
   path.join(root, 'package.json'),
   path.join(root, 'pnpm-lock.yaml')
 ];

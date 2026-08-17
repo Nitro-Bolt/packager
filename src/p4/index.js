@@ -1,5 +1,5 @@
 import P4 from './P4.svelte';
-import serviceWorker from '!!file-loader?name=sw.js!./sw.js';
+import serviceWorker from './sw.js';
 
 const app = new P4({
   target: document.getElementById('app')
