@@ -9,13 +9,13 @@ Converts projects into HTML files, zip archives, or executable programs for Wind
 Install dependencies:
 
 ```
-npm ci
+pnpm i --frozen-lockfile
 ```
 
 Start in development mode:
 
 ```
-npm start
+pnpm start
 ```
 
 Then visit http://localhost:8947. Manually refresh to see changes.
@@ -23,7 +23,7 @@ Then visit http://localhost:8947. Manually refresh to see changes.
 Packaged projects generated while in development mode should not be distributed. Instead, you should run a production build to significantly reduce file size of both the website and the packager.
 
 ```
-npm run build-prod
+pnpm run build-prod
 ```
 
 Output will be located in the `dist` folder.
@@ -88,6 +88,8 @@ npm run build-standalone-prod
 ```
 
 The build outputs to `dist/standalone.html`.
+
+To publish a standalone release and update NitroBolt Desktop, run the `Release standalone packager` GitHub Actions workflow manually and provide a semantic version. The workflow requires a `CASCADE_PAT` repository secret with permission to dispatch workflows and push to the NitroBolt Desktop repository.
 
 ## Node.js module and API
 

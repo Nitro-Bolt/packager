@@ -1,0 +1,79 @@
+name: Release standalone packager
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, for example 1.2.1
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build standalone packager
+        run: pnpm run build-standalone-prod
+
+      - name: Rename standalone packager
+        id: standalone
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version must be a semantic version such as 1.2.1."
+            exit 1
+          fi
+
+          asset="nitrobolt-packager-standalone-${VERSION}.html"
+          mv dist/standalone.html "dist/${asset}"
+          echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "asset=dist/${asset}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.standalone.outputs.tag }}
+          ASSET: ${{ steps.standalone.outputs.asset }}
+        run: |
+          gh release create "$TAG" "$ASSET" \
+            --title "NitroBolt Packager $TAG" \
+            --generate-notes
+
+      - name: Trigger desktop packager update
+        env:
+          GH_TOKEN: ${{ secrets.CASCADE_PAT }}
+          TAG: ${{ steps.standalone.outputs.tag }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "The CASCADE_PAT secret is required to trigger NitroBolt/desktop."
+            exit 1
+          fi
+
+          jq -n \
+            --arg tag "$TAG" \
+            '{event_type: "packager-released", client_payload: {release_tag: $tag}}' \
+            | gh api repos/Nitro-Bolt/desktop/dispatches --method POST --input -
