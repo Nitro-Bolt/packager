@@ -17,8 +17,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          persist-credentials: false
+
+      - name: Set package version
+        id: standalone
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version must be a semantic version such as 1.2.1."
+            exit 1
+          fi
+
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+          if ! git diff --quiet -- package.json; then
+            git config user.name "GitHub Action"
+            git config user.email "action@github.com"
+            git add -- package.json
+            git commit -m "chore: release packager v${VERSION}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+          echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "asset=dist/nitrobolt-packager-standalone-${VERSION}.html" >> "$GITHUB_OUTPUT"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -39,19 +60,11 @@ jobs:
         run: pnpm run build-standalone-prod
 
       - name: Rename standalone packager
-        id: standalone
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.standalone.outputs.tag }}
         run: |
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-            echo "Version must be a semantic version such as 1.2.1."
-            exit 1
-          fi
-
           asset="nitrobolt-packager-standalone-${VERSION}.html"
           mv dist/standalone.html "dist/${asset}"
-          echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "asset=dist/${asset}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
         env:

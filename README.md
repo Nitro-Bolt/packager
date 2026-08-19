@@ -89,7 +89,7 @@ npm run build-standalone-prod
 
 The build outputs to `dist/standalone.html`.
 
-To publish a standalone release and update NitroBolt Desktop, run the `Release standalone packager` GitHub Actions workflow manually and provide a semantic version. The workflow requires a `CASCADE_PAT` repository secret with permission to dispatch workflows and push to the NitroBolt Desktop repository.
+To publish a standalone release and update NitroBolt Desktop, run the `Release standalone packager` GitHub Actions workflow manually and provide a semantic version. The workflow updates `package.json`, builds and releases the standalone file, and requires a `CASCADE_PAT` repository secret with permission to dispatch workflows and push to the NitroBolt Desktop repository.
 
 ## Node.js module and API
 
