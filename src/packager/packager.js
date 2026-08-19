@@ -1436,7 +1436,8 @@ To run in development mode (requires a static file server for src/):
             storage.AssetType.ImageVector,
             storage.AssetType.ImageBitmap,
             storage.AssetType.Sound,
-            storage.AssetType.Font
+            storage.AssetType.Font,
+            storage.AssetType.Asset
           ].filter(i => i),
           (asset) => new URL('./assets/' + asset.assetId + '.' + asset.dataFormat, location).href
         );

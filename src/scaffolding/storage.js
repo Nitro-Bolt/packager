@@ -19,7 +19,8 @@ class StorageWithProgress extends ScratchStorage {
       assetType === this.AssetType.ImageBitmap ||
       assetType === this.AssetType.ImageVector ||
       assetType === this.AssetType.Sound ||
-      assetType === this.AssetType.Font
+      assetType === this.AssetType.Font ||
+      assetType === this.AssetType.Asset
     );
     if (isAsset) {
       this._totalAssets++;
