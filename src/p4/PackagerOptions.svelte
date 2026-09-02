@@ -1043,7 +1043,7 @@
     }}
   >
     <h2>{$_('options.steamworksExtension')}</h2>
-    {#if ['electron-win64', 'electron-linux64', 'electron-mac'].includes($options.target)}
+    {#if ['electron-win64', 'electron-linux64', 'electron-mac', 'tauri'].includes($options.target)}
       <p>{$_('options.steamworksAvailable').replace('{n}', '480')}</p>
       <label class="option">
         {$_('options.steamworksAppId')}
@@ -1063,6 +1063,15 @@
           {$_('options.steamworksMacWarning')}
         </p>
       {/if}
+
+      {#if $options.target === 'tauri'}
+        <p class="warning">
+          {$_('options.steamworksTauriWarning')}
+        </p>
+        <p class="warning">
+          {$_('options.steamworksTauriOverlayWarning')}
+        </p>
+      {/if}
     {:else}
       <p>{$_('options.steamworksUnavailable')}</p>
       <ul>
@@ -1073,6 +1082,7 @@
           {$_('options.steamworksMacWarning')}
         </li>
         <li>{$_('options.application-linux64').replace('{type}', 'Electron')}</li>
+        <li>{$_('options.application-win64').replace('{type}', 'Tauri')}</li>
       </ul>
     {/if}
 
@@ -1092,22 +1102,25 @@
     }}
   >
     <h2>{$_('options.richPresenceExtension')}</h2>
-    {#if ['electron-win64', 'electron-linux64', 'electron-mac'].includes($options.target)}
+    {#if ['electron-win64', 'electron-linux64', 'electron-mac', 'tauri'].includes($options.target)}
       <p>{$_('options.richPresenceAvailable')}</p>
-      <label class="option">
-        {$_('options.richPresenceOnError')}
-        <select bind:value={$options.richPresence.onError}>
-          <option value="ignore">{$_('options.richPresenceIgnore')}</option>
-          <option value="warning">{$_('options.richPresenceWarning')}</option>
-          <option value="error">{$_('options.richPresenceError')}</option>
-        </select>
-      </label>
+      {#if $options.target !== 'tauri'}
+        <label class="option">
+          {$_('options.richPresenceOnError')}
+          <select bind:value={$options.richPresence.onError}>
+            <option value="ignore">{$_('options.richPresenceIgnore')}</option>
+            <option value="warning">{$_('options.richPresenceWarning')}</option>
+            <option value="error">{$_('options.richPresenceError')}</option>
+          </select>
+        </label>
+      {/if}
     {:else}
       <p>{$_('options.richPresenceUnavailable')}</p>
       <ul>
         <li>{$_('options.application-win64').replace('{type}', 'Electron')}</li>
         <li>{$_('options.application-mac').replace('{type}', 'Electron')}</li>
         <li>{$_('options.application-linux64').replace('{type}', 'Electron')}</li>
+        <li>{$_('options.application-tauri').replace('{type}', 'Tauri')}</li>
       </ul>
     {/if}
 
