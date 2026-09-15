@@ -78,11 +78,11 @@ jobs:
 
       - name: Trigger desktop packager update
         env:
-          GH_TOKEN: ${{ secrets.CASCADE_PAT }}
+          GH_TOKEN: ${{ secrets.AUTOMATION }}
           TAG: ${{ steps.standalone.outputs.tag }}
         run: |
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "The CASCADE_PAT secret is required to trigger NitroBolt/desktop."
+            echo "The AUTOMATION secret is required to trigger NitroBolt/desktop."
             exit 1
           fi
 
