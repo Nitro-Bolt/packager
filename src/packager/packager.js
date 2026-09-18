@@ -1131,6 +1131,8 @@ cd "$(dirname "$0")"
 
     const zip = new (await getJSZip());
     const prefix = `${packageName}/`;
+    const usesRichPresence = this.project.analysis.usesRichPresence;
+    const usesSteamworks = this.project.analysis.usesSteamworks;
 
     for (const [path, data] of Object.entries(projectZip.files)) {
       setFileFast(zip, `${prefix}src/${path}`, data);
@@ -1139,16 +1141,48 @@ cd "$(dirname "$0")"
     const icon = await Adapter.getAppIcon(this.options.app.icon);
     zip.file(`${prefix}src-tauri/icons/icon.png`, icon);
 
-    zip.file(`${prefix}src-tauri/src/main.rs`, `\
+    // Plugin system: each plugin declares its Cargo dep, main.rs registration,
+    // pre-init code, permission, npm package, and whether it needs __TAURI__ global.
+    const tauriPlugins = [];
+
+    if (usesRichPresence) {
+      tauriPlugins.push({
+        cargoDep: 'tauri-plugin-drpc = "*"',
+        mainRsPlugin: '.plugin(tauri_plugin_drpc::init())',
+        permission: 'drpc:default',
+        npmPackage: 'tauri-plugin-drpc',
+        needsGlobalTauri: true,
+      });
+    }
+
+    if (usesSteamworks) {
+      const steamAppId = parseInt(this.options.steamworks.appId) || 480;
+      tauriPlugins.push({
+        cargoDep: 'tauri-plugin-steamworks = { version = "0.1", features = ["overlay"] }',
+        mainRsPlugin: '.plugin(tauri_plugin_steamworks::init())\n        .plugin(tauri_plugin_steamworks::init_overlay())',
+        mainRsPreInit: `tauri_plugin_steamworks::init_steam(${steamAppId});`,
+        permission: 'steamworks:default',
+        npmPackage: 'tauri-plugin-steamworks-api',
+        needsGlobalTauri: true,
+      });
+    }
+
+    const hasPlugins = tauriPlugins.length > 0;
+    const pluginCode = tauriPlugins.map(p => `        ${p.mainRsPlugin}`).join('\n');
+    const preInitCode = tauriPlugins.filter(p => p.mainRsPreInit).map(p => `    ${p.mainRsPreInit}`).join('\n');
+
+    const mainRs = `\
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    tauri::Builder::default()
-        .run(tauri::generate_context!())
+${preInitCode ? preInitCode + '\n\n' : ''}    tauri::Builder::default()
+${pluginCode ? pluginCode + '\n' : ''}        .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-`);
+`;
+
+    zip.file(`${prefix}src-tauri/src/main.rs`, mainRs);
 
     // src-tauri/build.rs
     zip.file(`${prefix}src-tauri/build.rs`, `\
@@ -1158,6 +1192,7 @@ fn main() {
 `);
 
     // src-tauri/Cargo.toml
+    const cargoDeps = tauriPlugins.map(p => p.cargoDep).join('\n');
     zip.file(`${prefix}src-tauri/Cargo.toml`, `\
 [package]
 name = ${JSON.stringify(crateId)}
@@ -1169,7 +1204,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-
+${cargoDeps ? cargoDeps + '\n' : ''}
 [profile.dev]
 incremental = true
 
@@ -1195,6 +1230,7 @@ strip = true
       windowConfig.maximized = true;
     }
 
+    const needsGlobalTauri = tauriPlugins.some(p => p.needsGlobalTauri);
     const tauriConf = {
       $schema: 'https://schema.tauri.app/config/2',
       productName: this.options.app.windowTitle,
@@ -1204,6 +1240,7 @@ strip = true
         frontendDist: '../src',
       },
       app: {
+        withGlobalTauri: needsGlobalTauri,
         windows: [windowConfig],
         security: {
           csp: null,
@@ -1217,6 +1254,22 @@ strip = true
     };
     zip.file(`${prefix}src-tauri/tauri.conf.json`, JSON.stringify(tauriConf, null, 2));
 
+    // src-tauri/capabilities/default.json
+    if (hasPlugins) {
+      const permissions = tauriPlugins.map(p => p.permission);
+      zip.file(`${prefix}src-tauri/capabilities/default.json`, JSON.stringify({
+        identifier: 'default',
+        description: 'Default capabilities',
+        windows: ['main'],
+        permissions,
+      }, null, 2));
+    }
+
+    // package.json
+    const npmDeps = {};
+    for (const p of tauriPlugins) {
+      npmDeps[p.npmPackage] = '*';
+    }
     const packageJson = {
       name: crateId,
       private: true,
@@ -1226,6 +1279,7 @@ strip = true
       },
       devDependencies: {
         '@tauri-apps/cli': '^2',
+        ...npmDeps,
       },
     };
     zip.file(`${prefix}package.json`, JSON.stringify(packageJson, null, 2));
@@ -1904,9 +1958,127 @@ To run in development mode (requires a static file server for src/):
         getSandboxMode: () => 'unsandboxed',
         canLoadExtensionFromProject: () => true
       });
+
+      ${this.options.target === 'tauri' && this.project.analysis.usesRichPresence ? `
+      if (typeof window.__TAURI__ !== 'undefined' && typeof window.RPC === 'undefined') {
+        (function() {
+          var invoke = window.__TAURI__.core.invoke;
+          function Client(options) {
+            var listeners = {};
+            this.on = function(event, callback) {
+              if (!listeners[event]) listeners[event] = [];
+              listeners[event].push(callback);
+              return this;
+            };
+            this.login = function(options) {
+              var clientId = options && (options.clientId || options.clientID);
+              if (!clientId) return Promise.reject(new Error('No client ID'));
+              return invoke('plugin:drpc|spawn_thread', { id: clientId }).then(function() {
+                if (listeners['ready']) {
+                  for (var i = 0; i < listeners['ready'].length; i++) {
+                    try { listeners['ready'][i](); } catch(e) { console.error(e); }
+                  }
+                }
+              });
+            };
+            this.setActivity = function(activity) {
+              activity = activity || {};
+              var converted = {};
+              if (activity.details) converted.details = activity.details;
+              if (activity.state) converted.state = activity.state;
+              var assets = {};
+              if (activity.largeImageKey) assets.large_image = activity.largeImageKey;
+              if (activity.largeImageText) assets.large_text = activity.largeImageText;
+              if (activity.smallImageKey) assets.small_image = activity.smallImageKey;
+              if (activity.smallImageText) assets.small_text = activity.smallImageText;
+              if (Object.keys(assets).length > 0) converted.assets = assets;
+              if (activity.startTimestamp) {
+                converted.timestamps = { start: Math.floor(activity.startTimestamp / 1000) };
+              }
+              if (activity.partySize || activity.partyMax) {
+                converted.party = { id: '', size: [activity.partySize || 1, activity.partyMax || 2] };
+              }
+              if (typeof activity.instance === 'boolean') converted.instance = activity.instance;
+              return invoke('plugin:drpc|set_activity', { activityJson: JSON.stringify(converted) });
+            };
+          }
+          window.RPC = { Client: Client };
+        })();
+      }` : ''}
+
+      ${this.options.target === 'tauri' && this.project.analysis.usesSteamworks ? `
+      var steamInitDone = (function() {
+        if (typeof window.__TAURI__ === 'undefined' || typeof window.Steamworks !== 'undefined') {
+          return Promise.resolve();
+        }
+        var invoke = window.__TAURI__.core.invoke;
+        var steamOk = false;
+        var cachedName = '';
+        var cachedLevel = 0;
+        var cachedIpCountry = '';
+        var cachedSteamId = { steamId64: '' };
+
+        window.Steamworks = {
+          ok: function() { return steamOk; },
+          localplayer: {
+            getName: function() { return cachedName; },
+            getLevel: function() { return cachedLevel; },
+            getIpCountry: function() { return cachedIpCountry; },
+            getSteamId: function() { return cachedSteamId; },
+          },
+          achievement: {
+            activate: function(name) { return invoke('plugin:steamworks|set_achievement', { name: name }); },
+            clear: function(name) { return invoke('plugin:steamworks|clear_achievement', { name: name }); },
+            isActivated: function(name) {
+              return invoke('plugin:steamworks|get_achievement', { name: name }).then(function(r) { return r.achieved; });
+            },
+          },
+          apps: {
+            isDlcInstalled: function() { return false; },
+          },
+          overlay: {
+            activateToWebPage: function(url) {
+              return invoke('plugin:steamworks|activate_game_overlay_to_web_page', { url: url });
+            },
+          },
+        };
+
+        return invoke('plugin:steamworks|steam_init', { appId: ${parseInt(this.options.steamworks.appId) || 480} }).then(function(result) {
+          steamOk = result;
+          if (steamOk) {
+            return Promise.all([
+              invoke('plugin:steamworks|get_user_name'),
+              invoke('plugin:steamworks|get_user_level'),
+              invoke('plugin:steamworks|get_ip_country'),
+              invoke('plugin:steamworks|get_user_steam_id')
+            ]).then(function(r) {
+              cachedName = r[0];
+              cachedLevel = r[1];
+              cachedIpCountry = r[2];
+              cachedSteamId = { steamId64: String(r[3]) };
+            });
+          }
+        }).then(function() {
+          window.addEventListener('keydown', function(e) {
+            if (e.shiftKey && e.key === 'Tab') {
+              e.preventDefault();
+              invoke('plugin:steamworks|activate_overlay').catch(function() {});
+            }
+          });
+        }).catch(function(e) {
+          console.error('Steamworks init failed:', e);
+        });
+      })();` : ''}
+
+      ${(this.options.target === 'tauri' && this.project.analysis.usesSteamworks) ? `
+      steamInitDone.then(function() {
+        for (const extension of ${JSON.stringify(await this.generateExtensionURLs())}) {
+          vm.extensionManager.loadExtensionURL(extension);
+        }
+      });` : `
       for (const extension of ${JSON.stringify(await this.generateExtensionURLs())}) {
         vm.extensionManager.loadExtensionURL(extension);
-      }
+      }`}
 
       ${this.options.closeWhenStopped ? `
       vm.runtime.on('PROJECT_RUN_STOP', () => {
