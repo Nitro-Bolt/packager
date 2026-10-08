@@ -13,14 +13,13 @@
   }
 </style>
 
-<Section accent={color}>
+<!-- <Section accent={color}>
   <div lang="en">
     <p>
       <span class="badge">New!</span>
     </p>
     <p>
-      By default, Electron apps will no longer be throttled when minimized or hidden.
-      There is an option to restore the old behavior.
+      Infinite clones is now actually infinite instead of being limited to 9,999,999,999 (though you may encounter significant practical limitations long before reaching that limit).
     </p>
   </div>
-</Section>
+</Section> -->

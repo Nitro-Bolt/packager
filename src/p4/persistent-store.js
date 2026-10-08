@@ -1,10 +1,12 @@
 import {writable} from 'svelte/store';
+// Standard JSON can't represent values such as Infinity, which some options use.
+import * as ExtendedJSON from '@turbowarp/json';
 import merge from './merge';
 import serialize from './serialize';
 
 const writablePersistentStore = (key, defaultValue) => {
-  let value = JSON.parse(JSON.stringify(defaultValue));
-  const localValue = JSON.parse(localStorage.getItem(key));
+  let value = ExtendedJSON.parse(ExtendedJSON.stringify(defaultValue));
+  const localValue = ExtendedJSON.parse(localStorage.getItem(key));
   if (localValue) {
     value = merge(localValue, value);
   }
@@ -14,7 +16,7 @@ const writablePersistentStore = (key, defaultValue) => {
       if (serialized === null) {
         localStorage.removeItem(key);
       } else {
-        localStorage.setItem(key, JSON.stringify(serialized));
+        localStorage.setItem(key, ExtendedJSON.stringify(serialized));
       }
     });
     return unsubscribe;

@@ -1,5 +1,7 @@
 <script>
   import {onDestroy} from 'svelte';
+  // Standard JSON can't represent values such as Infinity, which some options use.
+  import * as ExtendedJSON from '@turbowarp/json';
   import {_} from '../locales/';
   import {slide, fade} from 'svelte/transition';
   import Section from './Section.svelte';
@@ -26,9 +28,6 @@
   export let projectData;
   export let title;
 
-  // JSON can't easily parse Infinity, so we'll just store large numbers instead
-  const ALMOST_INFINITY = 9999999999;
-
   const cloudVariables = projectData.project.analysis.stageVariables
     .filter(i => i.isCloud)
     .map(i => i.name);
@@ -48,6 +47,12 @@
     if (typeof i === 'object' && i) return i.url || '';
     return i;
   });
+
+  // Infinite clones used to be stored as a big number instead of actual `Infinity`.
+  const ALMOST_INFINITY = 9999999999;
+  if ($options.maxClones === ALMOST_INFINITY) {
+    $options.maxClones = Infinity;
+  }
 
   const hasSettingsStoredInProject = !!projectData.project.analysis.hasStoredSettings;
 
@@ -223,7 +228,7 @@
 
   const exportOptions = async () => {
     const exported = await recursivelySerializeBlobs($options);
-    const blob = new Blob([JSON.stringify(exported)], {
+    const blob = new Blob([ExtendedJSON.stringify(exported)], {
       type: 'application/json'
     });
     const url = URL.createObjectURL(blob);
@@ -255,10 +260,13 @@
     }
     try {
       const text = await readAsText(file);
-      const parsed = JSON.parse(text);
+      const parsed = ExtendedJSON.parse(text);
       const deserialized = recursivelyDeserializeBlobs(parsed);
       const copiedDefaultOptions = deepClone(defaultOptions);
       const mergedWithDefaults = merge(deserialized, copiedDefaultOptions);
+      if (mergedWithDefaults.maxClones === ALMOST_INFINITY) {
+        mergedWithDefaults.maxClones = Infinity;
+      }
 
       const isUnsafe = Packager.usesUnsafeOptions(mergedWithDefaults);
       if (!isUnsafe || confirm($_('options.confirmImportUnsafe'))) {
@@ -381,8 +389,8 @@
     </div>
     <div class="option">
       <label>
-        <input type="checkbox" checked={$options.maxClones === ALMOST_INFINITY} on:change={(e) => {
-          $options.maxClones = e.target.checked ? ALMOST_INFINITY : 300;
+        <input type="checkbox" checked={$options.maxClones === Infinity} on:change={(e) => {
+          $options.maxClones = e.target.checked ? Infinity : 300;
         }}>
         {$_('options.infiniteClones')}
       </label>
