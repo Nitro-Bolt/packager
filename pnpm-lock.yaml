@@ -74,7 +74,7 @@ importers:
         version: https://codeload.github.com/TurboWarp/scratch-audio/tar.gz/dc47bf3bc177289531ed8a4fb616fed895dc303a
       scratch-render:
         specifier: github:Nitro-Bolt/scratch-render#develop
-        version: https://codeload.github.com/Nitro-Bolt/scratch-render/tar.gz/f952f4d387badabed2ea9491b1e033e2741540e9(webpack@4.47.0)
+        version: https://codeload.github.com/Nitro-Bolt/scratch-render/tar.gz/957bf6c24f8dddebf87553a93a85803b1fb095c3(webpack@4.47.0)
       scratch-render-fonts:
         specifier: github:TurboWarp/scratch-render-fonts#master
         version: https://codeload.github.com/TurboWarp/scratch-render-fonts/tar.gz/7b6768fc6dfef6b343a06f992587b74807043961
@@ -3885,8 +3885,8 @@ packages:
     resolution: {tarball: https://codeload.github.com/TurboWarp/scratch-render-fonts/tar.gz/7b6768fc6dfef6b343a06f992587b74807043961}
     version: 1.0.0
 
-  scratch-render@https://codeload.github.com/Nitro-Bolt/scratch-render/tar.gz/f952f4d387badabed2ea9491b1e033e2741540e9:
-    resolution: {tarball: https://codeload.github.com/Nitro-Bolt/scratch-render/tar.gz/f952f4d387badabed2ea9491b1e033e2741540e9}
+  scratch-render@https://codeload.github.com/Nitro-Bolt/scratch-render/tar.gz/957bf6c24f8dddebf87553a93a85803b1fb095c3:
+    resolution: {tarball: https://codeload.github.com/Nitro-Bolt/scratch-render/tar.gz/957bf6c24f8dddebf87553a93a85803b1fb095c3}
     version: 0.1.0
 
   scratch-sb1-converter@0.2.7:
@@ -9466,7 +9466,7 @@ snapshots:
     dependencies:
       base64-loader: 1.0.0
 
-  scratch-render@https://codeload.github.com/Nitro-Bolt/scratch-render/tar.gz/f952f4d387badabed2ea9491b1e033e2741540e9(webpack@4.47.0):
+  scratch-render@https://codeload.github.com/Nitro-Bolt/scratch-render/tar.gz/957bf6c24f8dddebf87553a93a85803b1fb095c3(webpack@4.47.0):
     dependencies:
       '@turbowarp/ancient-hull.js': 0.2.13
       '@turbowarp/nanolog': 0.2.0
