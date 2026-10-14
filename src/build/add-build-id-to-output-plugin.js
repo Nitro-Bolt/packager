@@ -1,4 +1,4 @@
-const RawSource = require('webpack-sources').RawSource;
+const {sources: {RawSource}} = require('@rspack/core');
 
 const PLUGIN_NAME = 'AddBuildIDToOutputPlugin';
 

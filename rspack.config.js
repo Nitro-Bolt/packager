@@ -1,19 +1,25 @@
 const path = require('path');
-const webpack = require('webpack');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-const CopyWebpackPlugin = require('copy-webpack-plugin');
+const rspack = require('@rspack/core');
+const {RsdoctorRspackPlugin} = require('@rsdoctor/rspack-plugin');
+const HtmlRspackPlugin = require('html-rspack-plugin');
 const AddBuildIDToOutputPlugin = require('./src/build/add-build-id-to-output-plugin');
 const GenerateServiceWorkerPlugin = require('./src/build/generate-service-worker-plugin');
-const EagerDynamicImportPlugin = require('./src/build/eager-dynamic-import-plugin');
 
 const isProduction = process.env.NODE_ENV === 'production';
-const isStandalone = !!process.env.STANDALONE;
+const isStandalone = Boolean(process.env.STANDALONE);
+const dist = path.resolve(__dirname, 'dist');
+const buildId = isProduction ? require('./src/build/generate-scaffolding-build-id') : null;
+const browserFallback = {
+  assert: require.resolve('assert/'),
+  events: require.resolve('events/'),
+  stream: require.resolve('stream-browserify'),
+  util: require.resolve('util/'),
+  zlib: require.resolve('browserify-zlib')
+};
+
 const base = {
   mode: isProduction ? 'production' : 'development'
 };
-const dist = path.resolve(__dirname, 'dist');
-const buildId = isProduction ? require('./src/build/generate-scaffolding-build-id') : null;
 
 const getVersion = () => {
   if (process.env.VERSION) {
@@ -23,8 +29,7 @@ const getVersion = () => {
     const now = new Date();
     const dateString = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
     const packageJSON = require('./package.json');
-    const version = packageJSON.version;
-    return `Standalone v${version} (${dateString})`;
+    return `Standalone v${packageJSON.version} (${dateString})`;
   }
   return null;
 };
@@ -32,7 +37,7 @@ const version = getVersion();
 
 const makeScaffolding = ({full}) => ({
   ...base,
-  devtool: isProduction ? '' : 'source-map',
+  devtool: isProduction ? false : 'source-map',
   output: {
     filename: 'scaffolding/[name].js',
     path: dist
@@ -49,15 +54,29 @@ const makeScaffolding = ({full}) => ({
       'htmlparser2$': path.resolve(__dirname, 'src', 'scaffolding', 'htmlparser2'),
       'scratch-translate-extension-languages$': path.resolve(__dirname, 'src', 'scaffolding', 'scratch-translate-extension-languages', 'languages.json'),
       'scratch-parser$': path.resolve(__dirname, 'src', 'scaffolding', 'scratch-parser')
-    }
+    },
+    fallback: browserFallback
   },
   module: {
     rules: [
+      {
+        test: /en\.json$/,
+        resourceQuery: /unstructure/,
+        type: 'json',
+        loader: path.resolve(__dirname, 'src', 'build', 'unstructure-translations-loader.js')
+      },
+      {
+        resourceQuery: /source/,
+        type: 'asset/source'
+      },
       {
         test: /\.jsx?$/,
         loader: 'babel-loader',
         include: [
           path.resolve(__dirname, 'src'),
+          path.resolve(__dirname, '../scratch-render/src'),
+          path.resolve(__dirname, '../scratch-storage/src'),
+          path.resolve(__dirname, '../scratch-vm/src'),
           /node_modules[\\/]scratch-[^\\/]+[\\/]src/
         ],
         options: {
@@ -66,63 +85,58 @@ const makeScaffolding = ({full}) => ({
         }
       },
       {
-        test: /\.(svg|png)$/i,
-        use: [{
-          loader: 'url-loader'
-        }]
+        test: /\.(frag|vert)$/i,
+        type: 'asset/source'
       },
-      ...(full ? [{
+      {
+        test: /\.(svg|png)$/i,
+        type: 'asset/inline'
+      },
+      full ? {
         test: /\.mp3$/i,
-        use: [{
-          loader: 'url-loader',
-          options: {
-            esModule: false
-          }
-        }]
-      }] : [{
+        type: 'asset/inline'
+      } : {
         test: /\.mp3$/i,
-        use: [{
-          loader: path.resolve(__dirname, 'src', 'build', 'noop-loader.js')
-        }]
-      }]),
+        type: 'javascript/auto',
+        loader: path.resolve(__dirname, 'src', 'build', 'noop-loader.js')
+      },
       {
         test: /\.css$/i,
+        resourceQuery: {not: [/source/]},
         use: [
           {
             loader: 'style-loader',
             options: {
-              // This function is stringified and run in a web environment
-              insert: (styleElement) => {
-                var el = document.head || document.body || document.documentElement;
-                el.insertBefore(styleElement, el.firstChild);
-              }
+              insert: path.resolve(__dirname, 'src', 'build', 'insert-style.js')
             }
           },
           {
             loader: 'css-loader',
             options: {
+              esModule: false,
               modules: {
                 localIdentName: 'sc-[local]',
-                exportLocalsConvention: 'camelCase',
-              },
+                exportLocalsConvention: 'camel-case'
+              }
             }
           }
-        ],
+        ]
       }
     ]
   },
-  resolveLoader: {
-    // Replace worker-loader with our own modified version
-    modules: [path.resolve(__dirname, 'src', 'build', 'inline-worker-loader'), 'node_modules'],
-  },
   plugins: [
+    new rspack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+      process: require.resolve('process/browser')
+    }),
     ...(buildId ? [new AddBuildIDToOutputPlugin(buildId)] : []),
-    ...(process.env.BUNDLE_ANALYZER === (full ? 'scaffolding-full' : 'scaffolding-min') ? [new BundleAnalyzerPlugin()] : [])
+    ...(process.env.BUNDLE_ANALYZER === (full ? 'scaffolding-full' : 'scaffolding-min') ?
+      [new RsdoctorRspackPlugin()] : [])
   ]
 });
 
 const commonFrontendPlugins = () => [
-  new webpack.DefinePlugin({
+  new rspack.DefinePlugin({
     'process.env.SCAFFOLDING_BUILD_ID': buildId ? JSON.stringify(buildId) : '("development-" + Math.random().toString().substring(2))',
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
   })
@@ -130,7 +144,7 @@ const commonFrontendPlugins = () => [
 
 const makeWebsite = () => ({
   ...base,
-  devtool: isStandalone ? '' : 'source-map',
+  devtool: isStandalone ? false : 'source-map',
   output: {
     filename: isProduction ? 'js/[name].[contenthash].js' : 'js/[name].js',
     path: dist
@@ -142,6 +156,7 @@ const makeWebsite = () => ({
     alias: {
       svelte: path.resolve('node_modules', 'svelte')
     },
+    fallback: browserFallback,
     extensions: ['.mjs', '.js', '.svelte'],
     mainFields: ['svelte', 'browser', 'module', 'main']
   },
@@ -152,69 +167,84 @@ const makeWebsite = () => ({
     }
   },
   module: {
+    parser: isStandalone ? {
+      javascript: {
+        dynamicImportMode: 'eager'
+      }
+    } : undefined,
     rules: [
       {
-        test: /\.png|\.svg$/i,
-        use: isStandalone ? {
-          loader: 'url-loader'
-        } : {
-          loader: 'file-loader',
-          options: {
-            name: 'assets/[name].[contenthash].[ext]'
-          }
+        test: /en\.json$/,
+        resourceQuery: /unstructure/,
+        type: 'json',
+        loader: path.resolve(__dirname, 'src', 'build', 'unstructure-translations-loader.js')
+      },
+      {
+        resourceQuery: /service-worker/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'sw.js'
+        }
+      },
+      {
+        test: /\.(png|svg)$/i,
+        resourceQuery: {not: [/service-worker/]},
+        type: isStandalone ? 'asset/inline' : 'asset/resource',
+        generator: isStandalone ? undefined : {
+          filename: 'assets/[name].[contenthash][ext]'
         }
       },
       {
         test: /\.(html|svelte)$/,
-        use: 'svelte-loader'
-      },
+        loader: 'svelte-loader'
+      }
     ]
   },
   plugins: [
     ...commonFrontendPlugins(),
-    new CopyWebpackPlugin({
-      patterns: [
-        {
-          from: 'static'
-        }
-      ]
+    new rspack.CopyRspackPlugin({
+      patterns: [{from: 'static'}]
     }),
-    new webpack.DefinePlugin({
+    new rspack.DefinePlugin({
       'process.env.ENABLE_SERVICE_WORKER': JSON.stringify(process.env.ENABLE_SERVICE_WORKER),
-      'process.env.STANDALONE': JSON.stringify(isStandalone ? true : false),
-      'process.env.VERSION': JSON.stringify(version),
+      'process.env.STANDALONE': JSON.stringify(isStandalone),
+      'process.env.VERSION': JSON.stringify(version)
     }),
-    new HtmlWebpackPlugin({
+    new HtmlRspackPlugin({
       filename: 'index.html',
       template: './src/p4/template.ejs',
       chunks: ['p4']
     }),
     new GenerateServiceWorkerPlugin(),
-    ...(isStandalone ? [new EagerDynamicImportPlugin()] : []),
-    ...(process.env.BUNDLE_ANALYZER === 'p4' ? [new BundleAnalyzerPlugin()] : [])
+    ...(process.env.BUNDLE_ANALYZER === 'p4' ? [new RsdoctorRspackPlugin()] : [])
   ],
   devServer: {
-    contentBase: './dist/',
+    static: {
+      directory: dist
+    },
     compress: true,
-    overlay: true,
-    inline: false,
+    client: {
+      overlay: true
+    },
     host: '0.0.0.0',
     port: 8947
-  },
+  }
 });
 
 const makeNode = () => ({
   ...base,
-  devtool: '',
+  devtool: false,
   target: 'node',
   output: {
     filename: '[name].js',
     path: dist,
-    library: 'packager',
-    libraryTarget: 'umd'
+    library: {
+      name: 'packager',
+      type: 'umd'
+    }
   },
   node: {
-    __dirname: false,
+    __dirname: false
   },
   entry: {
     packager: './src/packager/node/export.js'
@@ -224,28 +254,22 @@ const makeNode = () => ({
     '@turbowarp/sbdl': '@turbowarp/sbdl',
     '@fiahfy/icns': '@fiahfy/icns',
     'cross-fetch': 'cross-fetch',
-    'sha.js': 'sha.js',
+    'sha.js': 'sha.js'
   },
   module: {
-    rules: [
-      {
-        test: /\.png|\.svg$/i,
-        use: 'file-loader'
-      }
-    ]
+    rules: [{
+      test: /\.(png|svg)$/i,
+      type: 'asset/resource'
+    }]
   },
   plugins: [
     ...commonFrontendPlugins(),
-    ...(process.env.BUNDLE_ANALYZER === 'node' ? [new BundleAnalyzerPlugin()] : [])
-  ],
+    ...(process.env.BUNDLE_ANALYZER === 'node' ? [new RsdoctorRspackPlugin()] : [])
+  ]
 });
 
 module.exports = [
   makeScaffolding({full: true}),
   makeScaffolding({full: false}),
-  ...(process.env.BUILD_MODE === 'node' ? [
-    makeNode()
-  ] : [
-    makeWebsite()
-  ])
+  ...(process.env.BUILD_MODE === 'node' ? [makeNode()] : [makeWebsite()])
 ];

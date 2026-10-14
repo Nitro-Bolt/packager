@@ -19,7 +19,12 @@ const indexPath = pathUtil.join(dist, 'index.html');
 console.log(`index.html: ${indexPath}`);
 const indexContent = fs.readFileSync(indexPath, 'utf8');
 
-const jsPath = pathUtil.join(dist, indexContent.match(/<script src="(.*)"><\/script>/)[1]);
+const externalScriptPattern = /<script\b[^>]*\bsrc="([^"]+)"[^>]*><\/script>/;
+const externalScriptMatch = indexContent.match(externalScriptPattern);
+if (!externalScriptMatch) {
+  throw new Error('Unable to find the generated application script in index.html');
+}
+const jsPath = pathUtil.join(dist, externalScriptMatch[1]);
 console.log(`packager.js: ${jsPath}`);
 const jsContent = fs.readFileSync(jsPath, 'utf-8');
 
@@ -44,7 +49,7 @@ let newContent = indexContent;
 if (faviconData) {
   newContent = newContent.replace(/<\/head>/, `<link rel="shortcut icon" href="data:image/vnd.microsoft.icon;base64,${faviconData.toString('base64')}"></head>`);
 }
-newContent = newContent.replace(/<script src=".*"><\/script>/, () => (
+newContent = newContent.replace(externalScriptPattern, () => (
   `${standaloneJS}<script>${makeSafeForInlineScript(jsContent)}</script>`
 ));
 

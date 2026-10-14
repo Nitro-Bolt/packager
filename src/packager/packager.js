@@ -1266,11 +1266,11 @@ To run in development mode (requires a static file server for src/):
       'wss://clouddata.turbowarp.org',
       'wss://clouddata.turbowarp.xyz'
     ] : this.options.cloudVariables.cloudHost;
-    return `new Scaffolding.Cloud.WebSocketProvider(${JSON.stringify(cloudHost)}, ${JSON.stringify(this.options.projectId)})`;
+    return `new window.Scaffolding.Cloud.WebSocketProvider(${JSON.stringify(cloudHost)}, ${JSON.stringify(this.options.projectId)})`;
   }
 
   makeLocalStorageProvider () {
-    return `new Scaffolding.Cloud.LocalStorageProvider(${JSON.stringify(`cloudvariables:${this.options.projectId}`)})`;
+    return `new window.Scaffolding.Cloud.LocalStorageProvider(${JSON.stringify(`cloudvariables:${this.options.projectId}`)})`;
   }
 
   makeCustomProvider () {
@@ -1424,7 +1424,7 @@ To run in development mode (requires a static file server for src/):
           }
         });
         return () => (${getProjectDataFunction})().then(async (data) => {
-          zip = await Scaffolding.JSZip.loadAsync(data);
+          zip = await window.Scaffolding.JSZip.loadAsync(data);
           const file = findFileInZip('project.json');
           if (!file) {
             throw new Error('project.json is not in zip');
@@ -1734,7 +1734,7 @@ To run in development mode (requires a static file server for src/):
     try {
       setProgress(${PROGRESS_LOADED_SCRIPTS});
 
-      const scaffolding = new Scaffolding.Scaffolding();
+      const scaffolding = new window.Scaffolding.Scaffolding();
       scaffolding.width = ${this.options.stageWidth};
       scaffolding.height = ${this.options.stageHeight};
       scaffolding.resizeMode = ${JSON.stringify(this.options.resizeMode)};
@@ -1896,8 +1896,8 @@ To run in development mode (requires a static file server for src/):
       // enforcePrivacy threat model only makes sense in the editor
       if (vm.runtime.setEnforcePrivacy) vm.runtime.setEnforcePrivacy(false);
 
-      if (typeof ScaffoldingAddons !== 'undefined') {
-        ScaffoldingAddons.run(scaffolding, ${JSON.stringify(this.getAddonOptions())});
+      if (window.ScaffoldingAddons) {
+        window.ScaffoldingAddons.run(scaffolding, ${JSON.stringify(this.getAddonOptions())});
       }
 
       scaffolding.setExtensionSecurityManager({

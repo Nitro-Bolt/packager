@@ -18,6 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Set package version
         id: standalone
         env:
@@ -28,7 +31,7 @@ jobs:
             exit 1
           fi
 
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          pnpm version "$VERSION" --no-git-tag-version --allow-same-version
 
           if ! git diff --quiet -- package.json; then
             git config user.name "GitHub Action"
@@ -40,9 +43,6 @@ jobs:
 
           echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "asset=dist/nitrobolt-packager-standalone-${VERSION}.html" >> "$GITHUB_OUTPUT"
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
 
       - name: Install Node.js
         uses: actions/setup-node@v6

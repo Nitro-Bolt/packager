@@ -36,7 +36,7 @@ The general layout of `src` is:
  - common: Some files used by both scaffolding and the packager.
  - addons: Optional addons such as gamepad support or pointerlock.
  - locales: Translations. en.json contains the original English messages. The other languages are translated by volunteers and imported by an automated script. ([you can help](https://docs.turbowarp.org/translate))
- - build: Various build-time scripts such as webpack plugins and loaders.
+ - build: Various build-time plugins and loaders.
 
 ## Tips for forks
 

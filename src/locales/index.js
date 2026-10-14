@@ -1,6 +1,6 @@
 import {derived} from 'svelte/store';
 import writablePersistentStore from '../p4/persistent-store';
-import englishMessages from '!../build/unstructure-translations-loader!./en.json';
+import englishMessages from './en.json?unstructure';
 import localeNames from './locale-names.json';
 
 const allMessages = {
