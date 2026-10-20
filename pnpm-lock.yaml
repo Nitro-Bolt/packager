@@ -3868,8 +3868,8 @@ packages:
     resolution: {tarball: https://codeload.github.com/TurboWarp/scratch-audio/tar.gz/dc47bf3bc177289531ed8a4fb616fed895dc303a}
     version: 0.1.0
 
-  scratch-parser@https://codeload.github.com/Nitro-Bolt/scratch-parser/tar.gz/136eb40bb7d8bc4fe3411b2330adf99aafc75ecc:
-    resolution: {tarball: https://codeload.github.com/Nitro-Bolt/scratch-parser/tar.gz/136eb40bb7d8bc4fe3411b2330adf99aafc75ecc}
+  scratch-parser@https://codeload.github.com/Nitro-Bolt/scratch-parser/tar.gz/d19a8ce5b099ab163d4df306adb483be305a31ff:
+    resolution: {tarball: https://codeload.github.com/Nitro-Bolt/scratch-parser/tar.gz/d19a8ce5b099ab163d4df306adb483be305a31ff}
     version: 0.0.0-development
 
   scratch-render-fonts@https://codeload.github.com/TurboWarp/scratch-render-fonts/tar.gz/7b6768fc6dfef6b343a06f992587b74807043961:
@@ -9441,7 +9441,7 @@ snapshots:
       '@turbowarp/nanolog': 0.2.0
       '@turbowarp/startaudiocontext': 1.0.0
 
-  scratch-parser@https://codeload.github.com/Nitro-Bolt/scratch-parser/tar.gz/136eb40bb7d8bc4fe3411b2330adf99aafc75ecc:
+  scratch-parser@https://codeload.github.com/Nitro-Bolt/scratch-parser/tar.gz/d19a8ce5b099ab163d4df306adb483be305a31ff:
     dependencies:
       '@turbowarp/json': 0.1.2
       '@turbowarp/jszip': 3.12.0
@@ -9498,7 +9498,7 @@ snapshots:
       diff-match-patch: 1.0.4
       format-message: 6.2.1
       htmlparser2: 3.10.0
-      scratch-parser: https://codeload.github.com/Nitro-Bolt/scratch-parser/tar.gz/136eb40bb7d8bc4fe3411b2330adf99aafc75ecc
+      scratch-parser: https://codeload.github.com/Nitro-Bolt/scratch-parser/tar.gz/d19a8ce5b099ab163d4df306adb483be305a31ff
       scratch-sb1-converter: 0.2.7
       scratch-translate-extension-languages: 1.0.7
       uuid: 8.3.2
