@@ -19,6 +19,7 @@ class Monitor {
     this.root.className = styles.monitorRoot;
     this.root.dataset.id = this.id;
     this.root.dataset.opcode = this.opcode;
+    this.updateColor();
 
     this.parent._monitorOverlay.appendChild(this.root);
   }
@@ -110,7 +111,25 @@ class Monitor {
 
   getVmVariable () {
     const target = this.getTarget();
-    return target.variables[this.id];
+    return target && target.variables[this.id];
+  }
+
+  getColor () {
+    if (this.opcode === 'data_variable') {
+      const variable = this.getVmVariable();
+      return variable && variable.colour;
+    }
+    const label = this.parent.vm.runtime.getLabelForOpcode(this.opcode);
+    return label && label.color;
+  }
+
+  updateColor () {
+    const color = this.getColor();
+    if (color) {
+      this.root.style.setProperty('--sc-monitor-color', color);
+    } else {
+      this.root.style.removeProperty('--sc-monitor-color');
+    }
   }
 
   update (monitor) {
@@ -119,6 +138,7 @@ class Monitor {
     this.visible = monitor.get('visible');
     this.root.style.transform = `translate(${Math.round(this.x)}px, ${Math.round(this.y)}px)`;
     this.root.style.display = this.visible ? '' : 'none';
+    this.updateColor();
   }
 }
 
@@ -174,19 +194,6 @@ class VariableMonitor extends Monitor {
 
     this._value = '';
     this._monitorContent = null;
-    this.updateColor();
-  }
-
-  updateColor () {
-    let color = null;
-    if (this.opcode === 'data_variable') {
-      const variable = this.getVmVariable();
-      color = variable && variable.colour;
-    } else {
-      const label = this.parent.vm.runtime.getLabelForOpcode(this.opcode);
-      color = label && label.color;
-    }
-    if (color) this.valueElement.style.backgroundColor = color;
   }
 
   setVariableValue (value) {
@@ -229,7 +236,6 @@ class VariableMonitor extends Monitor {
         this.slider.value = value;
       }
     }
-    this.updateColor();
   }
 }
 

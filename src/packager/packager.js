@@ -1666,13 +1666,14 @@ To run in development mode (requires a static file server for src/):
       cursor: ${await this.generateCursor()};
     }
     .sc-monitor-root[data-opcode^="data_"] .sc-monitor-value-color {
-      background-color: ${this.options.monitors.variableColor};
+      background-color: var(--sc-monitor-color, ${this.options.monitors.variableColor});
     }
     .sc-monitor-row-value-outer {
-      background-color: ${this.options.monitors.listColor};
+      background-color: var(--sc-monitor-color, ${this.options.monitors.listColor});
     }
     .sc-monitor-row-value-editing .sc-monitor-row-value-outer {
-      background-color: ${darken(this.options.monitors.listColor)};
+      background-color: var(--sc-monitor-color, ${darken(this.options.monitors.listColor)});
+      filter: brightness(0.9);
     }
     ${this.options.custom.css}
   </style>
