@@ -1,161 +1,99 @@
-// TODO: Extract this and TurboWarp/scratch-vm's compression to a shared module
-
-// We don't generate new IDs using numbers at this time because their enumeration
-// order can affect script execution order as they always come first.
-// https://tc39.es/ecma262/#sec-ordinaryownpropertykeys
+// Keep this lossless and synchronized with scratch-vm's tw-compress-sb3 implementation.
+// Comments and cross-object IDs are project data, not disposable editor metadata.
 const SOUP = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#%()*+,-./:;=?@[]^_`{|}~';
-const generateId = i => {
-  let str = '';
-  while (i >= 0) {
-    str = SOUP[i % SOUP.length] + str;
-    i = Math.floor(i / SOUP.length) - 1;
+
+const generateId = index => {
+  let result = '';
+  while (index >= 0) {
+    result = SOUP[index % SOUP.length] + result;
+    index = Math.floor(index / SOUP.length) - 1;
   }
-  return str;
+  return result;
 };
 
 class Pool {
-  constructor() {
+  constructor () {
     this.generatedIds = new Map();
     this.references = new Map();
-    this.skippedIds = new Set();
-    // IDs in Object.keys(vm.runtime.monitorBlocks._blocks) already have meaning, so make sure to skip those
-    // We don't bother listing many here because most would take more than ten million items to be used
-    this.skippedIds.add('of');
+    this.skippedIds = new Set(['of']);
   }
+
   skip (id) {
     this.skippedIds.add(id);
   }
-  addReference(id) {
-    const currentCount = this.references.get(id) || 0;
-    this.references.set(id, currentCount + 1);
+
+  addReference (id) {
+    this.references.set(id, (this.references.get(id) || 0) + 1);
   }
-  generateNewIds() {
+
+  generateNewIds () {
     const entries = Array.from(this.references.entries());
-    // The most used original IDs should get the shortest new IDs.
     entries.sort((a, b) => b[1] - a[1]);
-
-    let i = 0;
-    for (const entry of entries) {
-      const oldId = entry[0];
-
-      let newId = generateId(i);
+    let index = 0;
+    for (const [oldId] of entries) {
+      let newId = generateId(index);
       while (this.skippedIds.has(newId)) {
-        i++;
-        newId = generateId(i);
+        index++;
+        newId = generateId(index);
       }
-
       this.generatedIds.set(oldId, newId);
-      i++;
+      index++;
     }
   }
-  getNewId(originalId) {
-    if (this.generatedIds.has(originalId)) {
-      return this.generatedIds.get(originalId);
-    }
-    return originalId;
+
+  getNewId (originalId) {
+    return this.generatedIds.get(originalId) || originalId;
   }
 }
 
-const optimizeSb3Json = (projectData) => {
-  // Note: we modify projectData in-place
-
-  // Scan global attributes of the project so we can generate optimal IDs later
-  const blockPool = new Pool();
+const optimizeSb3Json = projectData => {
+  const pool = new Pool();
 
   for (const target of projectData.targets) {
-    for (const [blockId, block] of Object.entries(target.blocks)) {
-      blockPool.addReference(blockId);
-      if (Array.isArray(block)) {
-        continue;
-      }
-
-      if (block.parent) {
-        blockPool.addReference(block.parent);
-      }
-      if (block.next) {
-        blockPool.addReference(block.next);
-      }
-
-      if (block.inputs) {
-        for (const input of Object.values(block.inputs)) {
-          for (let i = 1; i < input.length; i++) {
-            const inputValue = input[i];
-            if (typeof inputValue === 'string') {
-              blockPool.addReference(inputValue);
-            }
-          }
+    for (const collection of ['variables', 'lists', 'tables', 'broadcasts']) {
+      for (const id of Object.keys(target[collection] || {})) pool.skip(id);
+    }
+    for (const [blockId, block] of Object.entries(target.blocks || {})) {
+      pool.addReference(blockId);
+      if (Array.isArray(block)) continue;
+      if (block.parent) pool.addReference(block.parent);
+      if (block.next) pool.addReference(block.next);
+      if (block.comment) pool.addReference(block.comment);
+      for (const input of Object.values(block.inputs || {})) {
+        for (let index = 1; index < input.length; index++) {
+          if (typeof input[index] === 'string') pool.addReference(input[index]);
         }
       }
     }
-  }
-
-  blockPool.generateNewIds();
-
-  if (projectData.monitors) {
-    for (const monitor of projectData.monitors) {
-      // Remove redundant monitor values
-      monitor.value = Array.isArray(monitor.value) ? [] : 0;
+    for (const [commentId, comment] of Object.entries(target.comments || {})) {
+      pool.addReference(commentId);
+      if (comment.blockId) pool.addReference(comment.blockId);
     }
   }
 
-  // Use gathered data to optimize the project
+  pool.generateNewIds();
   for (const target of projectData.targets) {
     const newBlocks = {};
     const newComments = {};
-
-    for (const [blockId, block] of Object.entries(target.blocks)) {
-      newBlocks[blockPool.getNewId(blockId)] = block;
-      if (Array.isArray(block)) {
-        continue;
-      }
-
-      if (block.parent) {
-        block.parent = blockPool.getNewId(block.parent);
-      }
-      if (block.next) {
-        block.next = blockPool.getNewId(block.next);
-      }
-
-      if (block.inputs) {
-        for (const input of Object.values(block.inputs)) {
-          for (let i = 1; i < input.length; i++) {
-            const inputValue = input[i];
-            if (typeof inputValue === 'string') {
-              input[i] = blockPool.getNewId(inputValue);
-            }
-          }
-        }
-      }
-      if (!block.shadow) {
-        delete block.shadow;
-      }
-      if (!block.topLevel) {
-        delete block.topLevel;
-      }
-      delete block.x;
-      delete block.y;
-      delete block.comment;
-    }
-    if (target.comments) {
-      for (const [commentId, comment] of Object.entries(target.comments)) {
-        const text = comment.text;
-        const isSpecial = text.includes(' // _gamepad_');
-        if (isSpecial) {
-          newComments[commentId] = comment;
+    for (const [blockId, block] of Object.entries(target.blocks || {})) {
+      newBlocks[pool.getNewId(blockId)] = block;
+      if (Array.isArray(block)) continue;
+      if (block.parent) block.parent = pool.getNewId(block.parent);
+      if (block.next) block.next = pool.getNewId(block.next);
+      if (block.comment) block.comment = pool.getNewId(block.comment);
+      for (const input of Object.values(block.inputs || {})) {
+        for (let index = 1; index < input.length; index++) {
+          if (typeof input[index] === 'string') input[index] = pool.getNewId(input[index]);
         }
       }
     }
-
+    for (const [commentId, comment] of Object.entries(target.comments || {})) {
+      newComments[pool.getNewId(commentId)] = comment;
+      if (comment.blockId) comment.blockId = pool.getNewId(comment.blockId);
+    }
     target.blocks = newBlocks;
     target.comments = newComments;
   }
-
-  // Remove unnecessary metadata
-  if (projectData.meta) {
-    delete projectData.meta.agent;
-    delete projectData.meta.vm;
-  }
-
   return projectData;
 };
 

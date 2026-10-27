@@ -420,3 +420,56 @@
 .dropping {
   background-color: var(--sc-accent-color-transparent);
 }
+
+.debugger-root {
+  z-index: 100;
+  top: 8px;
+  right: 8px;
+  width: min(360px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  color: #222;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  pointer-events: all;
+  font-size: 12px;
+}
+.debugger-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  background: #f2f2f2;
+  border-bottom: 1px solid #ddd;
+}
+.debugger-header strong {
+  flex: 1;
+}
+.debugger-header button {
+  font: inherit;
+}
+.debugger-output,
+.debugger-timers {
+  max-height: 180px;
+  overflow: auto;
+}
+.debugger-log,
+.debugger-timers > div {
+  padding: 5px 7px;
+  border-bottom: 1px solid #eee;
+  border-left: 4px solid transparent;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.debugger-log[data-type="warn"] {
+  background: #fff8dc;
+}
+.debugger-log[data-type="error"] {
+  background: #ffe8e8;
+}
+.debugger-timers:not(:empty) {
+  border-top: 1px solid #ccc;
+}

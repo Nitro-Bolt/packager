@@ -1878,20 +1878,24 @@ To run in development mode (requires a static file server for src/):
         }
       }` : ''}
 
-      vm.setTurboMode(${this.options.turbo});
-      if (vm.setInterpolation) vm.setInterpolation(${this.options.interpolation});
-      if (vm.setFramerate) vm.setFramerate(${this.options.framerate});
-      if (vm.renderer.setUseHighQualityRender) vm.renderer.setUseHighQualityRender(${this.options.highQualityPen});
-      if (vm.setRuntimeOptions) vm.setRuntimeOptions({
-        fencing: ${this.options.fencing},
-        miscLimits: ${this.options.miscLimits},
-        maxClones: ${this.options.maxClones},
-      });
-      if (vm.setCompilerOptions) vm.setCompilerOptions({
-        enabled: ${this.options.compiler.enabled},
-        warpTimer: ${this.options.compiler.warpTimer}
-      });
-      if (vm.renderer.setMaxTextureDimension) vm.renderer.setMaxTextureDimension(${this.options.maxTextureDimension});
+      window.applyPackagerRuntimeOptions = () => {
+        vm.setTurboMode(${this.options.turbo});
+        if (vm.setInterpolation) vm.setInterpolation(${this.options.interpolation});
+        if (vm.setFramerate) vm.setFramerate(${this.options.framerate});
+        if (vm.renderer.setUseHighQualityRender) vm.renderer.setUseHighQualityRender(${this.options.highQualityPen});
+        if (vm.setRuntimeOptions) vm.setRuntimeOptions({
+          fencing: ${this.options.fencing},
+          miscLimits: ${this.options.miscLimits},
+          maxClones: ${this.options.maxClones},
+        });
+        if (vm.setCompilerOptions) vm.setCompilerOptions({
+          enabled: ${this.options.compiler.enabled},
+          warpTimer: ${this.options.compiler.warpTimer}
+        });
+        if (vm.setStageSize) vm.setStageSize(${this.options.stageWidth}, ${this.options.stageHeight});
+        if (vm.renderer.setMaxTextureDimension) vm.renderer.setMaxTextureDimension(${this.options.maxTextureDimension});
+      };
+      window.applyPackagerRuntimeOptions();
 
       // enforcePrivacy threat model only makes sense in the editor
       if (vm.runtime.setEnforcePrivacy) vm.runtime.setEnforcePrivacy(false);
@@ -1900,9 +1904,32 @@ To run in development mode (requires a static file server for src/):
         ScaffoldingAddons.run(scaffolding, ${JSON.stringify(this.getAddonOptions())});
       }
 
+      const extensionPermissionMode = ${JSON.stringify(this.options.extensionPermissions || 'all')};
+      const extensionPermissionDecisions = Object.create(null);
+      const askExtensionPermission = (action, detail) => {
+        if (extensionPermissionMode === 'all') return true;
+        if (Object.prototype.hasOwnProperty.call(extensionPermissionDecisions, action)) {
+          return extensionPermissionDecisions[action];
+        }
+        const allowed = confirm('A project extension wants permission to ' + action +
+          (detail ? ':\\n' + detail : '') +
+          '\\n\\nOnly allow this if you trust the project and its extensions.');
+        extensionPermissionDecisions[action] = allowed;
+        return allowed;
+      };
       scaffolding.setExtensionSecurityManager({
         getSandboxMode: () => 'unsandboxed',
-        canLoadExtensionFromProject: () => true
+        canLoadExtensionFromProject: () => true,
+        canFetch: url => askExtensionPermission('access the network', url),
+        canOpenWindow: url => askExtensionPermission('open a window', url),
+        canRedirect: url => askExtensionPermission('redirect this application', url),
+        canRecordAudio: () => askExtensionPermission('record audio'),
+        canRecordVideo: () => askExtensionPermission('record video'),
+        canReadClipboard: () => askExtensionPermission('read the clipboard'),
+        canNotify: () => askExtensionPermission('show notifications'),
+        canGeolocate: () => askExtensionPermission('access precise location'),
+        canEmbed: url => askExtensionPermission('embed remote content', url),
+        canDownload: (url, name) => askExtensionPermission('download a file named ' + name, url)
       });
       for (const extension of ${JSON.stringify(await this.generateExtensionURLs())}) {
         vm.extensionManager.loadExtensionURL(extension);
@@ -1948,6 +1975,8 @@ To run in development mode (requires a static file server for src/):
     const run = async () => {
       const projectData = await getProjectData();
       await scaffolding.loadProject(projectData);
+      // Stored editor settings are parsed while loading. The explicit export settings win.
+      window.applyPackagerRuntimeOptions();
       setProgress(1);
       loadingScreen.hidden = true;
       if (${this.options.autoplay}) {
@@ -2143,6 +2172,7 @@ Packager.DEFAULT_OPTIONS = () => ({
     onError: 'warning'
   },
   extensions: [],
+  extensionPermissions: 'all',
   bakeExtensions: true,
   maxTextureDimension: 2048
 });

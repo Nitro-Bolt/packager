@@ -53,6 +53,9 @@
   if ($options.maxClones === ALMOST_INFINITY) {
     $options.maxClones = Infinity;
   }
+  if (!$options.extensionPermissions) {
+    $options.extensionPermissions = defaultOptions.extensionPermissions;
+  }
 
   const hasSettingsStoredInProject = !!projectData.project.analysis.hasStoredSettings;
 
@@ -756,6 +759,14 @@
         <LearnMore slug="development/custom-extensions" />
         <CustomExtensions bind:extensions={$options.extensions} />
         <p class="warning">{$_('options.customExtensionsSecurity')}</p>
+      </label>
+
+      <label class="option">
+        {$_('options.extensionPermissions')}
+        <select bind:value={$options.extensionPermissions}>
+          <option value="all">{$_('options.extensionPermissionsAllow')}</option>
+          <option value="ask">{$_('options.extensionPermissionsAsk')}</option>
+        </select>
       </label>
 
       <label class="option">

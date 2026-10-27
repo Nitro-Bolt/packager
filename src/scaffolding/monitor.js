@@ -173,6 +173,20 @@ class VariableMonitor extends Monitor {
     this.parent._monitorOverlay.appendChild(this.root);
 
     this._value = '';
+    this._monitorContent = null;
+    this.updateColor();
+  }
+
+  updateColor () {
+    let color = null;
+    if (this.opcode === 'data_variable') {
+      const variable = this.getVmVariable();
+      color = variable && variable.colour;
+    } else {
+      const label = this.parent.vm.runtime.getLabelForOpcode(this.opcode);
+      color = label && label.color;
+    }
+    if (color) this.valueElement.style.backgroundColor = color;
   }
 
   setVariableValue (value) {
@@ -197,19 +211,25 @@ class VariableMonitor extends Monitor {
       return;
     }
 
+    const monitorContent = monitor.get('monitorContent') || null;
     let value = monitor.get('value');
     if (typeof value === 'number' && !Object.is(value, -0)) {
       value = Number(value.toFixed(6));
     }
     value = safeStringify(value);
 
-    if (this._value !== value) {
+    if (this._monitorContent !== monitorContent) {
+      this._monitorContent = monitorContent;
+      if (monitorContent) this.valueElement.innerHTML = monitorContent;
+    }
+    if (!monitorContent && (this._value !== value || this.valueElement.innerHTML)) {
       this._value = value;
       this.valueElement.textContent = value;
       if (this.slider) {
         this.slider.value = value;
       }
     }
+    this.updateColor();
   }
 }
 

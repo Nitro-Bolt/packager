@@ -8,6 +8,7 @@ const emptyTarget = () => ({
   comments: {},
   variables: {},
   lists: {},
+  tables: {},
   broadcasts: {},
 });
 
@@ -19,7 +20,7 @@ test('does not throw if project does not have monitors', () => {
   optimizeSb3(clone(data));
 });
 
-test('removes comments', () => {
+test('preserves comments', () => {
   const data = {
     targets: [
       {
@@ -37,6 +38,9 @@ test('removes comments', () => {
   };
   const optimized = optimizeSb3(clone(data));
   expect(Object.values(optimized.targets[0].comments)).toEqual([
+    {
+      text: "wregoiujji"
+    },
     {
       text: " // _gamepad_"
     }

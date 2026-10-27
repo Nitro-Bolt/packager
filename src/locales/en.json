@@ -174,7 +174,7 @@
       "string": "Runtime Options"
     },
     "storedWarning": {
-      "string": "Note: This project has settings stored in it, which may override these settings."
+      "string": "This project has editor settings stored in it. The explicit packager settings shown here will override them in the exported project."
     },
     "turbo": {
       "string": "Turbo Mode"
@@ -430,6 +430,15 @@
     },
     "customExtensionsSecurity": {
       "string": "Custom extensions are always run unsandboxed in the packager. Depending on the environment you're packaging for, this grants extensions full control over your computer, including the ability to install viruses. Don't use extensions you don't trust."
+    },
+    "extensionPermissions": {
+      "string": "Extension permissions"
+    },
+    "extensionPermissionsAllow": {
+      "string": "Allow all without asking"
+    },
+    "extensionPermissionsAsk": {
+      "string": "Ask the player when requested"
     },
     "bakeExtensions": {
       "string": "Try to embed cached copy of custom extensions instead of downloading them each time the project is run",

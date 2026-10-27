@@ -8,6 +8,7 @@ import Cloud from './cloud';
 import Question from './question';
 import {TableMonitor, ListMonitor, VariableMonitor} from './monitor';
 import ControlBar from './control-bar';
+import PackagedDebugger from './debugger';
 import {isValidListValue, isValidVariableValue} from './verify-value';
 import defaultMessages from './messages.json';
 import styles from './style.css';
@@ -375,6 +376,8 @@ class Scaffolding extends EventTarget {
 
     this.videoProvider = new VideoProvider();
     this.vm.setVideoProvider(this.videoProvider);
+
+    this.debugger = new PackagedDebugger(this);
   }
 
   async _connectPeripherals () {
