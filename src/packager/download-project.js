@@ -10,22 +10,22 @@ const unknownAnalysis = () => ({
   extensions: []
 });
 
-const hasStoredProjectOptions = (projectData) => {
+const getStoredProjectOptions = (projectData) => {
   if (!Object.prototype.hasOwnProperty.call(projectData, 'projectOptions')) {
-    return false;
+    return null;
   }
   const options = projectData.projectOptions;
-  if (options === null || options === undefined) {
-    return false;
-  }
   if (typeof options === 'string') {
-    const trimmed = options.trim();
-    return trimmed !== '' && trimmed !== '{}';
+    try {
+      return JSON.parse(options);
+    } catch (err) {
+      return null;
+    }
   }
   if (typeof options === 'object') {
-    return Object.keys(options).length > 0;
+    return options;
   }
-  return true;
+  return null;
 };
 
 const analyzeScratch2 = (projectData) => {
@@ -64,7 +64,7 @@ const analyzeScratch3 = (projectData) => {
   return {
     ...unknownAnalysis(),
     stageVariables,
-    hasStoredSettings: hasStoredProjectOptions(projectData),
+    storedSettings: getStoredProjectOptions(projectData),
     usesMusic,
     usesSteamworks,
     usesRichPresence,

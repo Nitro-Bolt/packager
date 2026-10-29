@@ -33,7 +33,11 @@
     .map(i => i.name);
 
   const defaultOptions = Packager.DEFAULT_OPTIONS();
+  const storedSettings = projectData.project.analysis.storedSettings;
   defaultOptions.projectId = projectData.projectId || `p4-${projectData.uniqueId}`;
+  for (const option of Object.keys(storedSettings)) {
+    if (storedSettings[option] !== null && storedSettings[option] !== undefined) defaultOptions[option] = storedSettings[option];
+  }
   for (const variable of cloudVariables) {
     defaultOptions.cloudVariables.custom[variable] = 'ws';
   }
@@ -56,8 +60,6 @@
   if (!$options.extensionPermissions) {
     $options.extensionPermissions = defaultOptions.extensionPermissions;
   }
-
-  const hasSettingsStoredInProject = !!projectData.project.analysis.hasStoredSettings;
 
   let result = null;
   let previewer = null;
@@ -358,12 +360,6 @@
 >
   <div>
     <h2>{$_('options.runtimeOptions')}</h2>
-
-    {#if hasSettingsStoredInProject}
-      <div class="group">
-        {$_('options.storedWarning')}
-      </div>
-    {/if}
 
     <label class="option">
       <input type="checkbox" bind:checked={$options.turbo}>
