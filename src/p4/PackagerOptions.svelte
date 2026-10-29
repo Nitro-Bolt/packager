@@ -35,7 +35,7 @@
   const defaultOptions = Packager.DEFAULT_OPTIONS();
   const storedSettings = projectData.project.analysis.storedSettings;
   defaultOptions.projectId = projectData.projectId || `p4-${projectData.uniqueId}`;
-  for (const option of Object.keys(storedSettings)) {
+  if (storedSettings) for (const option of Object.keys(storedSettings)) {
     if (storedSettings[option] !== null && storedSettings[option] !== undefined) defaultOptions[option] = storedSettings[option];
   }
   for (const variable of cloudVariables) {
