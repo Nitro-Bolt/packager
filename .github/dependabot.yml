@@ -7,3 +7,4 @@ updates:
     allow:
       - dependency-name: "scratch-vm"
       - dependency-name: "scratch-render"
+      - dependency-name: "@turbowarp/*"

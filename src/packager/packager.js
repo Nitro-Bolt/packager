@@ -23,6 +23,25 @@ const PROGRESS_EXTRACTED_COMPRESSED = 0.98;
 const PROGRESS_FETCHED_PROJECT_JSON = 0.2;
 const PROGRESS_FETCHED_ASSETS = 0.98;
 
+/**
+ * JSON.stringify but it also escapes < so that it can't break out of an inline <script>
+ * @param {unknown} value
+ * @returns {string}
+ */
+const stringifyForInlineScript = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
+
+/**
+ * Escape for safe use in shell script.
+ * @param {string} value
+ * @returns {string}
+ */
+const escapeShellArgument = (value) => {
+  if (/^[\w.-]+$/.test(value)) {
+    return value;
+  }
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+};
+
 const removeUnnecessaryEmptyLines = (string) => string.split('\n')
   .filter((line, index, array) => {
     if (index === 0 || index === array.length - 1) return true;
@@ -405,7 +424,7 @@ class Packager extends EventTarget {
     } else if (isLinux) {
       const startScript = `#!/bin/bash
 cd "$(dirname "$0")"
-./${packageName}`;
+./${escapeShellArgument(packageName)}`;
       zip.file(`${packageName}/start.sh`, startScript, {
         unixPermissions: 0o100755
       });
@@ -1053,7 +1072,7 @@ const {contextBridge, ipcRenderer} = require('electron');
       // Some Linux distributions can't easily open the executable file from the GUI, so we'll add a simple wrapper that people can use instead.
       const startScript = `#!/bin/bash
 cd "$(dirname "$0")"
-./${packageName}`;
+./${escapeShellArgument(packageName)}`;
       zip.file(`${rootPrefix}start.sh`, startScript, {
         unixPermissions: 0o100755
       });
@@ -1266,11 +1285,11 @@ To run in development mode (requires a static file server for src/):
       'wss://clouddata.turbowarp.org',
       'wss://clouddata.turbowarp.xyz'
     ] : this.options.cloudVariables.cloudHost;
-    return `new Scaffolding.Cloud.WebSocketProvider(${JSON.stringify(cloudHost)}, ${JSON.stringify(this.options.projectId)})`;
+    return `new Scaffolding.Cloud.WebSocketProvider(${stringifyForInlineScript(cloudHost)}, ${stringifyForInlineScript(this.options.projectId)})`;
   }
 
   makeLocalStorageProvider () {
-    return `new Scaffolding.Cloud.LocalStorageProvider(${JSON.stringify(`cloudvariables:${this.options.projectId}`)})`;
+    return `new Scaffolding.Cloud.LocalStorageProvider(${stringifyForInlineScript(`cloudvariables:${this.options.projectId}`)})`;
   }
 
   makeCustomProvider () {
@@ -1286,7 +1305,7 @@ To run in development mode (requires a static file server for src/):
     result += 'for (const provider of Object.values(providers)) scaffolding.addCloudProvider(provider);\n';
     for (const variableName of Object.keys(variables)) {
       const providerToUse = variables[variableName];
-      result += `scaffolding.addCloudProviderOverride(${JSON.stringify(variableName)}, providers[${JSON.stringify(providerToUse)}] || null);\n`;
+      result += `scaffolding.addCloudProviderOverride(${stringifyForInlineScript(variableName)}, providers[${stringifyForInlineScript(providerToUse)}] || null);\n`;
     }
     result += '}';
     return result;
@@ -1390,7 +1409,7 @@ To run in development mode (requires a static file server for src/):
           }
         };
         xhr.responseType = 'arraybuffer';
-        xhr.open('GET', ${JSON.stringify(src)});
+        xhr.open('GET', ${stringifyForInlineScript(src)});
         xhr.send();
       })`;
     }
@@ -1488,7 +1507,7 @@ To run in development mode (requires a static file server for src/):
     };
 
     /** @type {string[]} */
-    const allURLs = this.options.extensions;
+    const allURLs = this.project.analysis.extensions;
     const unfetchableURLs = allURLs.filter((url) => !shouldTryToFetch(url));
     const urlsToFetch = allURLs.filter((url) => shouldTryToFetch(url));
     const finalURLs = [...unfetchableURLs];
@@ -1738,7 +1757,7 @@ To run in development mode (requires a static file server for src/):
       const scaffolding = new Scaffolding.Scaffolding();
       scaffolding.width = ${this.options.stageWidth};
       scaffolding.height = ${this.options.stageHeight};
-      scaffolding.resizeMode = ${JSON.stringify(this.options.resizeMode)};
+      scaffolding.resizeMode = ${stringifyForInlineScript(this.options.resizeMode)};
       scaffolding.editableLists = ${this.options.monitors.editableLists};
       scaffolding.usePackagedRuntime = ${this.options.packagedRuntime};
       scaffolding.setup();
@@ -1755,8 +1774,8 @@ To run in development mode (requires a static file server for src/):
         videoProvider: vm.runtime.ioDevices.video.provider
       };
 
-      scaffolding.setUsername(${JSON.stringify(this.options.username)}.replace(/#/g, () => Math.floor(Math.random() * 10)));
-      scaffolding.setAccentColor(${JSON.stringify(this.options.appearance.accent)});
+      scaffolding.setUsername(${stringifyForInlineScript(this.options.username)}.replace(/#/g, () => Math.floor(Math.random() * 10)));
+      scaffolding.setAccentColor(${stringifyForInlineScript(this.options.appearance.accent)});
 
       try {
         ${this.options.cloudVariables.mode === 'ws' ?
@@ -1902,7 +1921,7 @@ To run in development mode (requires a static file server for src/):
       if (vm.runtime.setEnforcePrivacy) vm.runtime.setEnforcePrivacy(false);
 
       if (typeof ScaffoldingAddons !== 'undefined') {
-        ScaffoldingAddons.run(scaffolding, ${JSON.stringify(this.getAddonOptions())});
+        ScaffoldingAddons.run(scaffolding, ${stringifyForInlineScript(this.getAddonOptions())});
       }
 
       const extensionPermissionMode = ${JSON.stringify(this.options.extensionPermissions || 'all')};
@@ -1932,7 +1951,7 @@ To run in development mode (requires a static file server for src/):
         canEmbed: url => askExtensionPermission('embed remote content', url),
         canDownload: (url, name) => askExtensionPermission('download a file named ' + name, url)
       });
-      for (const extension of ${JSON.stringify(await this.generateExtensionURLs())}) {
+      for (const extension of ${stringifyForInlineScript(await this.generateExtensionURLs())}) {
         vm.extensionManager.loadExtensionURL(extension);
       }
 
@@ -2072,7 +2091,6 @@ Packager.usesUnsafeOptions = (options) => {
   const defaultOptions = Packager.DEFAULT_OPTIONS();
   const getUnsafeOptions = (options) => [
     options.custom,
-    options.extensions,
     options.cloudVariables.unsafeCloudBehaviors
   ];
   return JSON.stringify(getUnsafeOptions(defaultOptions)) !== JSON.stringify(getUnsafeOptions(options));

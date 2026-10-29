@@ -7,7 +7,6 @@
   import Section from './Section.svelte';
   import Button from '../p4/Button.svelte';
   import ImageInput from './ImageInput.svelte';
-  import CustomExtensions from '../p4/CustomExtensions.svelte';
   import LearnMore from './LearnMore.svelte';
   import ColorPicker from './ColorPicker.svelte';
   import Downloads from './Downloads.svelte';
@@ -39,14 +38,7 @@
   }
   defaultOptions.app.packageName = Packager.getDefaultPackageNameFromFileName(projectData.title);
   defaultOptions.app.windowTitle = Packager.getWindowTitleFromFileName(projectData.title);
-  defaultOptions.extensions = projectData.project.analysis.extensions;
   const options = writablePersistentStore(`PackagerOptions.${projectData.uniqueId}`, defaultOptions);
-
-  // Compatibility with https://github.com/TurboWarp/packager/commit/f66199abd1c896c11aa69247275a1594fdfc95b8
-  $options.extensions = $options.extensions.map(i => {
-    if (typeof i === 'object' && i) return i.url || '';
-    return i;
-  });
 
   // Infinite clones used to be stored as a big number instead of actual `Infinity`.
   const ALMOST_INFINITY = 9999999999;
@@ -103,7 +95,6 @@
   const advancedOptionsInitiallyOpen = (
     $options.compiler.enabled !== defaultOptions.compiler.enabled ||
     $options.compiler.warpTimer !== defaultOptions.compiler.warpTimer ||
-    $options.extensions.length !== 0 ||
     $options.bakeExtensions !== defaultOptions.bakeExtensions ||
     $options.custom.css !== '' ||
     $options.custom.js !== '' ||
@@ -199,7 +190,7 @@
     try {
       result = await task.do(runPackager(task, optionsClone));
       task.done();
-      previewer.setContent(result.blob);
+      previewer.setContent(result.blob, optionsClone.app.windowTitle);
     } catch (e) {
       previewer.close();
     }
@@ -723,7 +714,6 @@
   reset={() => {
     resetOptions([
       'compiler',
-      'extensions',
       'bakeExtensions',
       'custom',
       'projectId',
@@ -750,16 +740,6 @@
         </label>
         <LearnMore slug="warp-timer" />
       </div>
-
-      <!-- Ignore because CustomExtensions will have a <textarea> inside it -->
-      <!-- svelte-ignore a11y-label-has-associated-control -->
-      <label class="option">
-        {$_('options.customExtensions')}
-        <!-- TODO: use the user-facing documentation when that becomes available -->
-        <LearnMore slug="development/custom-extensions" />
-        <CustomExtensions bind:extensions={$options.extensions} />
-        <p class="warning">{$_('options.customExtensionsSecurity')}</p>
-      </label>
 
       <label class="option">
         {$_('options.extensionPermissions')}
