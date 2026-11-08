@@ -8,7 +8,6 @@ import Cloud from './cloud';
 import Question from './question';
 import {TableMonitor, ListMonitor, VariableMonitor} from './monitor';
 import ControlBar from './control-bar';
-import PackagedDebugger from './debugger';
 import {isValidListValue, isValidVariableValue} from './verify-value';
 import defaultMessages from './messages.json';
 import styles from './style.css';
@@ -320,6 +319,20 @@ class Scaffolding extends EventTarget {
 
   setup () {
     this.vm = new VM();
+    const debuggerFactory = this.vm.extensionManager.builtinExtensions.debugger;
+    if (debuggerFactory) {
+      const DebuggerExtension = debuggerFactory();
+      class IgnoredDebuggerExtension extends DebuggerExtension {
+        breakpoint () {}
+        clear () {}
+        log () {}
+        timerCommand () {}
+        getTimerValue () { return 0; }
+        cloneCount () { return 0; }
+        memory () { return 0; }
+      }
+      this.vm.extensionManager.builtinExtensions.debugger = () => IgnoredDebuggerExtension;
+    }
     this.vm.setCompatibilityMode(true);
     this.vm.setLocale(navigator.language);
     this.vm.on('MONITORS_UPDATE', this._onmonitorsupdate.bind(this));
@@ -376,8 +389,6 @@ class Scaffolding extends EventTarget {
 
     this.videoProvider = new VideoProvider();
     this.vm.setVideoProvider(this.videoProvider);
-
-    this.debugger = new PackagedDebugger(this);
   }
 
   async _connectPeripherals () {
