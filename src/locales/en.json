@@ -208,6 +208,12 @@
     "preserveRatio": {
       "string": "Preserve aspect ratio when resized (recommended)"
     },
+    "integerScale": {
+      "string": "Scale by whole-number multiples and center the stage"
+    },
+    "integerScaleExtend": {
+      "string": "Scale by whole-number multiples, then extend the stage to fill the screen (experimental)"
+    },
     "stretch": {
       "string": "Stretch stage to fill screen without changing actual size (experimental)"
     },

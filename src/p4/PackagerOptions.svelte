@@ -436,6 +436,14 @@
         {$_('options.preserveRatio')}
       </label>
       <label class="option">
+        <input type="radio" name="resize-mode" value="integer-scale" bind:group={$options.resizeMode}>
+        {$_('options.integerScale')}
+      </label>
+      <label class="option">
+        <input type="radio" name="resize-mode" value="integer-scale-extend" bind:group={$options.resizeMode}>
+        {$_('options.integerScaleExtend')}
+      </label>
+      <label class="option">
         <input type="radio" name="resize-mode" value="stretch" bind:group={$options.resizeMode}>
         {$_('options.stretch')}
       </label>

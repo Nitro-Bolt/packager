@@ -271,6 +271,18 @@ class Scaffolding extends EventTarget {
     const projectAreaWidth = Math.max(1, totalWidth - offsetFromLeft - offsetFromRight);
     const projectAreaHeight = Math.max(1, totalHeight - offsetFromTop - offsetFromBottom);
 
+    if (this.resizeMode === 'integer-scale-extend') {
+      const scale = Math.max(1, Math.floor(Math.min(
+        projectAreaWidth / this._configuredWidth,
+        projectAreaHeight / this._configuredHeight
+      )));
+      const extendedWidth = Math.max(this._configuredWidth, projectAreaWidth / scale);
+      const extendedHeight = Math.max(this._configuredHeight, projectAreaHeight / scale);
+      if (this.vm.setStageSize && (this.width !== extendedWidth || this.height !== extendedHeight)) {
+        this.vm.setStageSize(extendedWidth, extendedHeight);
+      }
+    }
+
     if (this.resizeMode === 'dynamic-resize') {
       // setStageSize is a TurboWarp-specific method
       if (this.vm.setStageSize) {
@@ -284,7 +296,21 @@ class Scaffolding extends EventTarget {
 
     let width = projectAreaWidth;
     let height = projectAreaHeight;
-    if (this.resizeMode !== 'stretch') {
+    if (this.resizeMode === 'integer-scale') {
+      const scale = Math.max(1, Math.floor(Math.min(
+        projectAreaWidth / this.width,
+        projectAreaHeight / this.height
+      )));
+      width = this.width * scale;
+      height = this.height * scale;
+    } else if (this.resizeMode === 'integer-scale-extend') {
+      const scale = Math.max(1, Math.floor(Math.min(
+        projectAreaWidth / this._configuredWidth,
+        projectAreaHeight / this._configuredHeight
+      )));
+      width = this.width * scale;
+      height = this.height * scale;
+    } else if (this.resizeMode !== 'stretch') {
       width = height / this.height * this.width;
       if (width > projectAreaWidth) {
         height = projectAreaWidth / this.width * this.height;
@@ -318,6 +344,9 @@ class Scaffolding extends EventTarget {
   }
 
   setup () {
+    this._configuredWidth = this.width;
+    this._configuredHeight = this.height;
+
     this.vm = new VM();
     const debuggerFactory = this.vm.extensionManager.builtinExtensions.debugger;
     if (debuggerFactory) {
