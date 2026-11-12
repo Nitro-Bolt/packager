@@ -38,6 +38,26 @@
   }
   defaultOptions.app.packageName = Packager.getDefaultPackageNameFromFileName(projectData.title);
   defaultOptions.app.windowTitle = Packager.getWindowTitleFromFileName(projectData.title);
+  const storedSettings = projectData.project.analysis.storedSettings;
+  if (storedSettings) {
+    if (typeof storedSettings.turbo === 'boolean') defaultOptions.turbo = storedSettings.turbo;
+    if (typeof storedSettings.framerate === 'number') defaultOptions.framerate = storedSettings.framerate;
+    if (typeof storedSettings.interpolation === 'boolean') {
+      defaultOptions.interpolation = storedSettings.interpolation;
+    }
+    if (typeof storedSettings.hq === 'boolean') defaultOptions.highQualityPen = storedSettings.hq;
+    if (typeof storedSettings.width === 'number') defaultOptions.stageWidth = storedSettings.width;
+    if (typeof storedSettings.height === 'number') defaultOptions.stageHeight = storedSettings.height;
+    if (storedSettings.runtimeOptions) {
+      const runtimeOptions = storedSettings.runtimeOptions;
+      if (typeof runtimeOptions.maxClones === 'number') defaultOptions.maxClones = runtimeOptions.maxClones;
+      if (typeof runtimeOptions.fencing === 'boolean') defaultOptions.fencing = runtimeOptions.fencing;
+      if (typeof runtimeOptions.miscLimits === 'boolean') defaultOptions.miscLimits = runtimeOptions.miscLimits;
+    }
+    if (storedSettings.compilerOptions && typeof storedSettings.compilerOptions.catchErrors === 'boolean') {
+      defaultOptions.compiler.catchErrors = storedSettings.compilerOptions.catchErrors;
+    }
+  }
   const options = writablePersistentStore(`PackagerOptions.${projectData.uniqueId}`, defaultOptions);
 
   // Infinite clones used to be stored as a big number instead of actual `Infinity`.
@@ -49,7 +69,7 @@
     $options.extensionPermissions = defaultOptions.extensionPermissions;
   }
 
-  const hasSettingsStoredInProject = !!projectData.project.analysis.hasStoredSettings;
+  const hasSettingsStoredInProject = !!storedSettings;
 
   let result = null;
   let previewer = null;
@@ -94,6 +114,7 @@
 
   const advancedOptionsInitiallyOpen = (
     $options.compiler.enabled !== defaultOptions.compiler.enabled ||
+    $options.compiler.catchErrors !== defaultOptions.compiler.catchErrors ||
     $options.compiler.warpTimer !== defaultOptions.compiler.warpTimer ||
     $options.bakeExtensions !== defaultOptions.bakeExtensions ||
     $options.custom.css !== '' ||
@@ -747,6 +768,12 @@
           {$_('options.warpTimer')}
         </label>
         <LearnMore slug="warp-timer" />
+      </div>
+      <div class="option">
+        <label>
+          <input type="checkbox" bind:checked={$options.compiler.catchErrors}>
+          {$_('options.catchErrors')}
+        </label>
       </div>
 
       <label class="option">

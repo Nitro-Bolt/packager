@@ -1,31 +1,30 @@
 import optimizeSb3Json from './minify/sb3';
 import {downloadProjectFromBuffer} from '@turbowarp/sbdl';
+import * as ExtendedJSON from '@turbowarp/json';
 
 const unknownAnalysis = () => ({
   stageVariables: [],
   hasStoredSettings: false,
+  storedSettings: null,
   usesMusic: true,
   usesSteamworks: false,
   usesRichPresence: false,
   extensions: []
 });
 
-const hasStoredProjectOptions = (projectData) => {
+const parseStoredProjectOptions = (projectData) => {
   if (!Object.prototype.hasOwnProperty.call(projectData, 'projectOptions')) {
-    return false;
+    return null;
   }
-  const options = projectData.projectOptions;
-  if (options === null || options === undefined) {
-    return false;
+  try {
+    const serialized = projectData.projectOptions;
+    const options = typeof serialized === 'string' ? ExtendedJSON.parse(serialized) : serialized;
+    return options && typeof options === 'object' && !Array.isArray(options) && Object.keys(options).length ?
+      options : null;
+  } catch (e) {
+    console.warn('Could not parse stored project settings', e);
+    return null;
   }
-  if (typeof options === 'string') {
-    const trimmed = options.trim();
-    return trimmed !== '' && trimmed !== '{}';
-  }
-  if (typeof options === 'object') {
-    return Object.keys(options).length > 0;
-  }
-  return true;
 };
 
 const analyzeScratch2 = (projectData) => {
@@ -61,10 +60,12 @@ const analyzeScratch3 = (projectData) => {
   const usesSteamworks = projectData.extensions.includes('steamworks');
   const usesRichPresence = projectData.extensions.includes('cubesterRichPresence');
   const extensions = projectData.extensionURLs ? Object.values(projectData.extensionURLs) : [];
+  const storedSettings = parseStoredProjectOptions(projectData);
   return {
     ...unknownAnalysis(),
     stageVariables,
-    hasStoredSettings: hasStoredProjectOptions(projectData),
+    hasStoredSettings: !!storedSettings,
+    storedSettings,
     usesMusic,
     usesSteamworks,
     usesRichPresence,

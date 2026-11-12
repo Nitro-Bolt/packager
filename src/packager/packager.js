@@ -1910,6 +1910,7 @@ To run in development mode (requires a static file server for src/):
         });
         if (vm.setCompilerOptions) vm.setCompilerOptions({
           enabled: ${this.options.compiler.enabled},
+          catchErrors: ${this.options.compiler.catchErrors},
           warpTimer: ${this.options.compiler.warpTimer}
         });
         if (vm.setStageSize) vm.setStageSize(${this.options.stageWidth}, ${this.options.stageHeight});
@@ -2147,6 +2148,7 @@ Packager.DEFAULT_OPTIONS = () => ({
   },
   compiler: {
     enabled: true,
+    catchErrors: true,
     warpTimer: false
   },
   packagedRuntime: true,

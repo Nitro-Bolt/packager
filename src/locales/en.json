@@ -418,6 +418,9 @@
     "enableCompiler": {
       "string": "Enable Compiler"
     },
+    "catchErrors": {
+      "string": "Catch errors"
+    },
     "warpTimer": {
       "string": "Warp Timer"
     },
